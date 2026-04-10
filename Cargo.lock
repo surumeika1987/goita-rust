@@ -3,5 +3,12 @@
 version = 4
 
 [[package]]
+name = "goita_cli"
+version = "0.1.0"
+dependencies = [
+ "goita_core",
+]
+
+[[package]]
 name = "goita_core"
 version = "0.1.0"
