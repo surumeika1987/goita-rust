@@ -161,8 +161,6 @@ pub enum ApplyResult {
     Continuing,
     /// The round has ended with a final result.
     RoundOver(RoundResult),
-    /// The Game has ended with a final result.
-    GameOver(GameResult),
 }
 
 // 1ラウンド分の進行状態を保持する構造体。
@@ -227,7 +225,15 @@ impl GoitaRound {
             .try_into()
             .unwrap();
 
-        self.check_deal_event()
+        let deal_event = self.check_deal_event();
+
+        match deal_event {
+            DealEvent::FivePawnSameTeam { team: _ }
+            | DealEvent::HandRank { rank: _, player: _ } => self.round_is_over = true,
+            _ => {}
+        };
+
+        deal_event
     }
 
     // 配牌直後の役イベントを判定する。
@@ -271,11 +277,8 @@ impl GoitaRound {
         // 7し判定
         let event_player = pawn_count.iter().find(|(_, count)| *count == 7);
         if let Some((player, _)) = event_player {
-            let remain_piece = self.hands[*player as usize]
-                .pieces()
-                .iter()
-                .find(|p| **p != Piece::Pawn)
-                .unwrap();
+            let pieces = self.hands[*player as usize].pieces();
+            let remain_piece = pieces.iter().find(|p| **p != Piece::Pawn).unwrap();
             return DealEvent::HandRank {
                 player: *player,
                 rank: HandRank::SevenPawn {
@@ -287,11 +290,12 @@ impl GoitaRound {
         // 6し判定
         let event_player = pawn_count.iter().find(|(_, count)| *count == 6);
         if let Some((player, _)) = event_player {
-            let mut remain_pieces = self.hands[*player as usize]
-                .pieces()
+            let pieces = self.hands[*player as usize].pieces();
+            let mut remain_pieces = pieces
                 .iter()
                 .filter(|p| **p != Piece::Pawn)
-                .collect::<Vec<&Piece>>();
+                .cloned()
+                .collect::<Vec<Piece>>();
             let first_piece = remain_pieces.pop().unwrap();
             let secound_piece = remain_pieces.pop().unwrap();
 
@@ -552,9 +556,6 @@ pub struct GoitaGame {
     current_round: Option<GoitaRound>,
     // Starting player for the next round, which is determined by the previous round's result.
     round_start_player: BoardDirection,
-    // Game over flag to indicate if the game has ended, which can be used to prevent further
-    // actions after a game result is reached.
-    game_over: bool,
 }
 
 impl Default for GoitaGame {
@@ -576,7 +577,6 @@ impl GoitaGame {
             ew_score: 0,
             current_round: None,
             round_start_player: initial_round_start_player,
-            game_over: false,
         }
     }
 
@@ -589,16 +589,34 @@ impl GoitaGame {
     ///
     /// # Returns
     ///
-    /// - `Ok(())` if a new round is successfully started.
+    /// - `Ok(DealEvent)` containing the result of the initial hand check after dealing.
     /// - `Err(Error::GameIsOver)` if the game has already ended.
-    pub fn start_new_round(&mut self) -> Result<(), Error> {
-        if self.game_over {
+    pub fn start_new_round(&mut self) -> Result<DealEvent, Error> {
+        if let Some(_) = self.check_game_over() {
             return Err(Error::GameIsOver);
         }
         let mut round = GoitaRound::new(self.round_start_player);
-        round.shuffle_and_deal_hands();
+        let deal_event = round.shuffle_and_deal_hands();
+        match deal_event {
+            DealEvent::FivePawnSameTeam { team } => match team {
+                Team::NorthSouth => self.ns_score = self.game_rule.winning_score(),
+                Team::EastWest => self.ew_score = self.game_rule.winning_score(),
+            },
+            DealEvent::HandRank { player, rank } => {
+                let winning_team = Team::from(player);
+                let score = match rank {
+                    HandRank::SixPawn { score } | HandRank::SevenPawn { score } => score as u32,
+                    HandRank::EightPawn => 100,
+                };
+                match winning_team {
+                    Team::NorthSouth => self.ns_score += score,
+                    Team::EastWest => self.ew_score += score,
+                }
+            }
+            _ => {}
+        }
         self.current_round = Some(round);
-        Ok(())
+        Ok(deal_event)
     }
 
     /// Applies a player's action for the current turn.
@@ -628,7 +646,7 @@ impl GoitaGame {
         player: BoardDirection,
         action: PlayerAction,
     ) -> Result<ApplyResult, Error> {
-        if self.game_over {
+        if let Some(_) = self.check_game_over() {
             return Err(Error::GameIsOver);
         }
         if let Some(round) = &mut self.current_round {
@@ -637,13 +655,6 @@ impl GoitaGame {
                 match round_result.winning_team() {
                     Team::NorthSouth => self.ns_score += round_result.score() as u32,
                     Team::EastWest => self.ew_score += round_result.score() as u32,
-                }
-
-                if self.game_rule.winning_score() <= self.score(round_result.winning_team()) {
-                    let game_result =
-                        GameResult::new(round_result.winning_team(), self.ns_score, self.ew_score);
-                    self.game_over = true;
-                    return Ok(ApplyResult::GameOver(game_result));
                 }
 
                 self.round_start_player = round_result.winning_player();
@@ -677,6 +688,21 @@ impl GoitaGame {
         match team {
             Team::NorthSouth => self.ns_score,
             Team::EastWest => self.ew_score,
+        }
+    }
+
+    pub fn check_game_over(&self) -> Option<GameResult> {
+        if self.ns_score >= self.game_rule.winning_score()
+            || self.ew_score >= self.game_rule.winning_score()
+        {
+            let winning_team = if self.ns_score >= self.ew_score {
+                Team::NorthSouth
+            } else {
+                Team::EastWest
+            };
+            Some(GameResult::new(winning_team, self.ns_score, self.ew_score))
+        } else {
+            None
         }
     }
 }
