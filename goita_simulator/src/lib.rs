@@ -20,6 +20,34 @@ pub enum Error {
     GameIsOver,
 }
 
+/// Represents a special hand rank that is checked immediately after dealing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum HandRank {
+    /// Six pawns in hand. Holds the score (`u8`) determined by the remaining tiles.
+    SixPawn { score: u8 },
+    /// Seven pawns in hand. Holds the score (`u8`) determined by the remaining tiles.
+    SevenPawn { score: u8 },
+    /// Eight pawns in hand. Always scores 100 points.
+    EightPawn,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DealEvent {
+    FivePawn {
+        player: BoardDirection,
+    },
+    FivePawnSameTeam {
+        team: Team,
+    },
+    /// Two players from different teams both have five or more Shi in hand.
+    FivePawnBothTeams,
+    HandRank {
+        player: BoardDirection,
+        rank: HandRank,
+    },
+    Normal,
+}
+
 /// Result of a completed round.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RoundResult {
@@ -172,7 +200,7 @@ impl GoitaRound {
     // - 乱数で順序をランダム化
     // - 8枚ごとに `Hand` を作成し、4人分の `self.hands` に格納
     // - 32枚ちょうどで4分割できる前提のため `try_into().unwrap()` を使用
-    pub fn shuffle_and_deal_hands(&mut self) {
+    pub fn shuffle_and_deal_hands(&mut self) -> DealEvent {
         const DEFAULT_PIECES: [(Piece, u8); 8] = [
             (Piece::King, 2),
             (Piece::Rook, 2),
@@ -197,7 +225,117 @@ impl GoitaRound {
             .map(|chunk| Hand::from(chunk.to_vec()))
             .collect::<Vec<Hand>>()
             .try_into()
-            .unwrap()
+            .unwrap();
+
+        self.check_deal_event()
+    }
+
+    // 配牌直後の役イベントを判定する。
+    //
+    // 判定優先度:
+    // 1. 8し（歩8枚）
+    // 2. 7し（歩7枚 + 残り1枚の点数×2）
+    // 3. 6し（歩6枚 + 残り2枚。同種ならその点数×2、異種なら高い方）
+    // 4. 5し（歩5枚以上）
+    //    - 2人発生で同一チーム: FivePawnSameTeam
+    //    - 2人発生で別チーム: FivePawnBothTeams
+    //    - 1人のみ発生: FivePawn
+    // 5. 上記なし: Normal
+    //
+    // 各プレイヤーの歩枚数を方角付きで集計し、上から順に最初に成立したイベントを返す。
+    fn check_deal_event(&self) -> DealEvent {
+        const DIRECTIONS: [BoardDirection; 4] = [
+            BoardDirection::North,
+            BoardDirection::East,
+            BoardDirection::South,
+            BoardDirection::West,
+        ];
+
+        let pawn_count = self
+            .hands
+            .iter()
+            .map(|hand| hand.count(Piece::Pawn))
+            .enumerate()
+            .map(|(i, count)| (DIRECTIONS[i], count))
+            .collect::<Vec<(BoardDirection, u8)>>();
+
+        // 8し判定
+        let event_player = pawn_count.iter().find(|(_, count)| *count == 8);
+        if let Some((player, _)) = event_player {
+            return DealEvent::HandRank {
+                player: *player,
+                rank: HandRank::EightPawn,
+            };
+        }
+
+        // 7し判定
+        let event_player = pawn_count.iter().find(|(_, count)| *count == 7);
+        if let Some((player, _)) = event_player {
+            let remain_piece = self.hands[*player as usize]
+                .pieces()
+                .iter()
+                .find(|p| **p != Piece::Pawn)
+                .unwrap();
+            return DealEvent::HandRank {
+                player: *player,
+                rank: HandRank::SevenPawn {
+                    score: remain_piece.point_value() * 2,
+                },
+            };
+        }
+
+        // 6し判定
+        let event_player = pawn_count.iter().find(|(_, count)| *count == 6);
+        if let Some((player, _)) = event_player {
+            let mut remain_pieces = self.hands[*player as usize]
+                .pieces()
+                .iter()
+                .filter(|p| **p != Piece::Pawn)
+                .collect::<Vec<&Piece>>();
+            let first_piece = remain_pieces.pop().unwrap();
+            let secound_piece = remain_pieces.pop().unwrap();
+
+            let double_up = first_piece == secound_piece;
+
+            return DealEvent::HandRank {
+                player: *player,
+                rank: HandRank::SixPawn {
+                    score: if double_up {
+                        first_piece.point_value() * 2
+                    } else {
+                        if first_piece.point_value() > secound_piece.point_value() {
+                            first_piece.point_value()
+                        } else {
+                            secound_piece.point_value()
+                        }
+                    },
+                },
+            };
+        }
+
+        // 5し判定
+        let event_players = pawn_count
+            .iter()
+            .filter(|(_, count)| *count >= 5)
+            .map(|(dir, _)| *dir)
+            .collect::<Vec<BoardDirection>>();
+        if event_players.len() == 2 {
+            // 2人いる場合
+            let team1 = Team::from(event_players[0]);
+            let team2 = Team::from(event_players[1]);
+            if team1 == team2 {
+                return DealEvent::FivePawnSameTeam { team: team1 };
+            } else {
+                return DealEvent::FivePawnBothTeams;
+            }
+        } else if event_players.len() == 1 {
+            // 1人だけいる場合
+            return DealEvent::FivePawn {
+                player: event_players[0],
+            };
+        }
+
+        DealEvent::Normal
     }
 
     // 指定したプレイヤーの手札を参照として返す。
