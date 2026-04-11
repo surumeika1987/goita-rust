@@ -40,12 +40,13 @@ impl RoundResult {
     }
 
     /// Returns the team that won the round.
-    pub fn winning_team(&self) -> &Team {
-        &self.winning_team
+    pub fn winning_team(&self) -> Team {
+        Team::from(self.winning_player)
     }
 
+    /// Returns the player who placed the winning pieces in the round.
     pub fn winning_player(&self) -> BoardDirection {
-        self.last_place_player
+        self.winning_player
     }
 
     /// Returns the score awarded for the round.
@@ -260,6 +261,7 @@ impl GoitaRound {
     // - bottom が王の場合は can_place_king による追加制約を満たす必要がある
     // - board.place_pieces が失敗した場合は不正
     // - 成功時は手札から2枚を削除し、最終配置プレイヤーを更新する
+    // - 手番を次のプレイヤーに進める
     fn place_pieces(
         &mut self,
         player: BoardDirection,
@@ -319,6 +321,7 @@ impl GoitaRound {
         let _ = self.hands[player_index].remove(bottom_piece);
 
         self.last_place_player = Some(player);
+        self.next_turn();
 
         Ok(())
     }
@@ -451,7 +454,7 @@ impl GoitaGame {
     /// - `Ok(())` if a new round is successfully started.
     /// - `Err(Error::GameIsOver)` if the game has already ended.
     pub fn start_new_round(&mut self) -> Result<(), Error> {
-        if game_over {
+        if self.game_over {
             return Err(Error::GameIsOver);
         }
         let mut round = GoitaRound::new(self.round_start_player);
@@ -487,25 +490,25 @@ impl GoitaGame {
         player: BoardDirection,
         action: PlayerAction,
     ) -> Result<ApplyResult, Error> {
-        if game_over {
+        if self.game_over {
             return Err(Error::GameIsOver);
         }
         if let Some(round) = &mut self.current_round {
             let result = round.action(player, action)?;
             if let ApplyResult::RoundOver(round_result) = result {
                 match round_result.winning_team() {
-                    Team::NorthSouth => self.ns_score += round_result.score(),
-                    Team::EastWest => self.ew_score += round_result.score(),
+                    Team::NorthSouth => self.ns_score += round_result.score() as u32,
+                    Team::EastWest => self.ew_score += round_result.score() as u32,
                 }
 
-                if self.game_rule.winning_score() <= self.score(*round_result.winning_team()) {
+                if self.game_rule.winning_score() <= self.score(round_result.winning_team()) {
                     let game_result =
-                        GameResult::new(*round_result.winning_team(), self.ns_score, self.ew_score);
+                        GameResult::new(round_result.winning_team(), self.ns_score, self.ew_score);
                     self.game_over = true;
                     return Ok(ApplyResult::GameOver(game_result));
                 }
 
-                self.round_start_player = round_result.winning_team().first_player_direction();
+                self.round_start_player = round_result.winning_player();
             }
 
             Ok(result)
