@@ -1,4 +1,5 @@
 use goita_core::*;
+use rand;
 use rand::prelude::*;
 
 /// Errors that can occur while processing a game action.
@@ -178,19 +179,15 @@ struct GoitaRound {
 }
 
 impl GoitaRound {
-    // 指定した開始手番プレイヤーでラウンドを初期化し、
-    // 駒をシャッフルして各プレイヤーに配る。
+    // 指定した開始手番プレイヤーでラウンドを初期化する。
     pub fn new(init_turn_player: BoardDirection) -> Self {
-        let mut round = Self {
+        Self {
             board: Board::new(),
             current_player: init_turn_player,
             last_place_player: None,
             hands: [Hand::new(), Hand::new(), Hand::new(), Hand::new()],
             round_is_over: false,
-        };
-
-        round.shuffle_and_deal_hands();
-        round
+        }
     }
 
     // 駒の既定構成を展開してシャッフルし、8枚ずつ4人分の手札として配る。
@@ -198,7 +195,7 @@ impl GoitaRound {
     // - 乱数で順序をランダム化
     // - 8枚ごとに `Hand` を作成し、4人分の `self.hands` に格納
     // - 32枚ちょうどで4分割できる前提のため `try_into().unwrap()` を使用
-    pub fn shuffle_and_deal_hands(&mut self) -> DealEvent {
+    pub fn shuffle_and_deal_hands(&mut self, rng: &mut rand::rngs::StdRng) -> DealEvent {
         const DEFAULT_PIECES: [(Piece, u8); 8] = [
             (Piece::King, 2),
             (Piece::Rook, 2),
@@ -215,8 +212,7 @@ impl GoitaRound {
             .flat_map(|(piece, count)| std::iter::repeat(*piece).take(*count as usize))
             .collect();
 
-        let mut rng = rand::rng();
-        expanded.shuffle(&mut rng);
+        expanded.shuffle(rng);
 
         self.hands = expanded
             .chunks(8)
@@ -556,6 +552,9 @@ pub struct GoitaGame {
     current_round: Option<GoitaRound>,
     // Starting player for the next round, which is determined by the previous round's result.
     round_start_player: BoardDirection,
+    // Random number generator for shuffling, initialized with a seed that can be set for
+    // reproducibility.
+    rng: rand::rngs::StdRng,
 }
 
 impl Default for GoitaGame {
@@ -571,12 +570,35 @@ impl GoitaGame {
     ///
     /// param `initial_round_start_player` The player who will start the first round.
     pub fn new(game_rule: GoitaRule, initial_round_start_player: BoardDirection) -> Self {
+        let mut rng = rand::rng();
+        let seed: u64 = rng.random();
+        Self::new_with_seed(game_rule, initial_round_start_player, seed)
+    }
+
+    /// Creates a new game state with a deterministic random number generator.
+    ///
+    /// This constructor initializes scores to `0`, sets `current_round` to `None`,
+    /// and uses `seed` to initialize the internal RNG for reproducible behavior.
+    ///
+    /// # Parameters
+    /// - `game_rule`: The rules used for the game.
+    /// - `initial_round_start_player`: The player who starts the first round.
+    /// - `seed`: The seed used to initialize the RNG.
+    ///
+    /// # Returns
+    /// A newly initialized `Self` instance.
+    pub fn new_with_seed(
+        game_rule: GoitaRule,
+        initial_round_start_player: BoardDirection,
+        seed: u64,
+    ) -> Self {
         Self {
             game_rule,
             ns_score: 0,
             ew_score: 0,
             current_round: None,
             round_start_player: initial_round_start_player,
+            rng: rand::SeedableRng::seed_from_u64(seed),
         }
     }
 
@@ -596,7 +618,7 @@ impl GoitaGame {
             return Err(Error::GameIsOver);
         }
         let mut round = GoitaRound::new(self.round_start_player);
-        let deal_event = round.shuffle_and_deal_hands();
+        let deal_event = round.shuffle_and_deal_hands(&mut self.rng);
         match deal_event {
             DealEvent::FivePawnSameTeam { team } => match team {
                 Team::NorthSouth => self.ns_score = self.game_rule.winning_score(),
