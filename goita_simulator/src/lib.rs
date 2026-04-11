@@ -691,6 +691,13 @@ impl GoitaGame {
         }
     }
 
+    /// Checks whether the game has reached its end condition.
+    ///
+    /// The game is considered over when either team's score is greater than or equal to
+    /// the winning score defined by the current game rule.
+    ///
+    /// Returns `Some(GameResult)` with the winning team and both final scores when the game
+    /// is over; otherwise returns `None`.
     pub fn check_game_over(&self) -> Option<GameResult> {
         if self.ns_score >= self.game_rule.winning_score()
             || self.ew_score >= self.game_rule.winning_score()
