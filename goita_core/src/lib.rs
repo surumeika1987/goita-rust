@@ -17,7 +17,7 @@ pub enum Piece {
     Gold,
     /// Silver General (銀)
     Silver,
-    /// Knight (桂)
+    /// Knight (馬)
     Knight,
     /// Lance (香)
     Lance,
@@ -25,16 +25,59 @@ pub enum Piece {
     Pawn,
 }
 
+impl Piece {
+    /// Goita pieces have different point values based on their type. This method returns the point
+    /// Value of the piece, which can be used for scoring and strategic evaluation in the game. The
+    /// point values are assigned as follows:
+    /// King: 50 points
+    /// Rook: 40 points
+    /// Bishop: 40 points
+    /// Gold: 30 points
+    /// Silver: 30 points
+    /// Knight: 20 points
+    /// Lance: 20 points
+    /// Pawn: 10 points
+    pub fn point_value(&self) -> u8 {
+        match self {
+            Piece::King => 50,
+            Piece::Rook => 40,
+            Piece::Bishop => 40,
+            Piece::Gold => 30,
+            Piece::Silver => 30,
+            Piece::Knight => 20,
+            Piece::Lance => 20,
+            Piece::Pawn => 10,
+        }
+    }
+}
+
 /// A player's hand of pieces, tracking the count of each piece type.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Hand {
-    piece_counts: HashMap<Piece, u8>
+    piece_counts: HashMap<Piece, u8>,
+}
+
+impl From<Vec<Piece>> for Hand {
+    fn from(pieces: Vec<Piece>) -> Self {
+        Self::new_with_pieces(pieces)
+    }
 }
 
 impl Hand {
     /// Creates an empty hand.
     pub fn new() -> Self {
-        Self { piece_counts: HashMap::new() }
+        Self {
+            piece_counts: HashMap::new(),
+        }
+    }
+
+    /// Creates a hand initialized with the given pieces. The input vector can contain duplicates,
+    pub fn new_with_pieces(pieces: Vec<Piece>) -> Self {
+        let mut hand = Self::new();
+        for piece in pieces {
+            hand.add(piece);
+        }
+        hand
     }
 
     /// Returns the total number of pieces in the hand.
@@ -127,6 +170,55 @@ pub enum BoardDirection {
     West,
 }
 
+impl From<BoardDirection> for usize {
+    fn from(d: BoardDirection) -> Self {
+        match d {
+            BoardDirection::North => 0,
+            BoardDirection::East => 1,
+            BoardDirection::South => 2,
+            BoardDirection::West => 3,
+        }
+    }
+}
+
+impl BoardDirection {
+    pub fn next(self) -> Self {
+        match self {
+            BoardDirection::North => BoardDirection::East,
+            BoardDirection::East => BoardDirection::South,
+            BoardDirection::South => BoardDirection::West,
+            BoardDirection::West => BoardDirection::North,
+        }
+    }
+}
+
+/// An action a player can take on their turn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PlayerAction {
+    /// Skip the turn without placing any pieces.
+    Pass,
+    /// Place two pieces on the board in order: `top` then `bottom`.
+    Place { top: Piece, bottom: Piece },
+}
+
+/// Teams in a 4-player game.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Team {
+    /// The team formed by the North and South players.
+    NorthSouth,
+    /// The team formed by the East and West players.
+    EastWest,
+}
+
+impl From<BoardDirection> for Team {
+    fn from(d: BoardDirection) -> Self {
+        match d {
+            BoardDirection::North | BoardDirection::South => Team::NorthSouth,
+            BoardDirection::East | BoardDirection::West => Team::EastWest,
+        }
+    }
+}
+
 /// Represents a piece on the board along with its facing (up or down). In Goita, pieces can be
 /// placed face-up (visible to all players) or face-down (hidden from all players). This struct
 /// encapsulates both the piece type and its orientation on the board.
@@ -136,6 +228,14 @@ pub enum PieceWithFacing {
     Up(Piece),
     /// The piece is face-down and its content is hidden from all players.
     Down(Piece),
+}
+
+impl From<PieceWithFacing> for Piece {
+    fn from(pwf: PieceWithFacing) -> Self {
+        match pwf {
+            PieceWithFacing::Up(p) | PieceWithFacing::Down(p) => p,
+        }
+    }
 }
 
 /// Represents the state of the board in a game of Goita. The board is represented as a mapping from
@@ -158,29 +258,48 @@ pub struct Board {
 impl Board {
     /// Creates a new, empty board with no pieces placed.
     pub fn new() -> Self {
-        Self { pieces: HashMap::new(), last_placed_player: None }
+        Self {
+            pieces: HashMap::new(),
+            last_placed_player: None,
+        }
     }
 
-    /// Returns a reference to the list of pieces for the given board direction (player), or `None`
-    /// if the player has not placed any pieces on the board. Each piece in the list includes its
-    /// facing (up or down), allowing us to determine which pieces are visible and which are hidden
-    /// for that player.
-    pub fn get_pieces(&self, direction: BoardDirection) -> Option<&[PieceWithFacing]> {
-        self.pieces.get(&direction).map(|vec| vec.as_slice())
+    /// Returns a reference to the list of pieces for the given player (board direction). If the
+    /// player has no pieces on the board, it returns an empty list. This method allows us to easily
+    /// access the pieces for a specific player and check their state (facing) as needed.
+    pub fn get_pieces(&self, direction: BoardDirection) -> Vec<PieceWithFacing> {
+        self.pieces
+            .get(&direction)
+            .cloned()
+            .unwrap_or_else(Vec::new)
     }
-    
+
+    /// Returns a flat list of all pieces on the board, regardless of player or facing. This can be
+    /// useful for evaluating the overall state of the board, counting pieces, or implementing game
+    /// logic that needs to consider all pieces in play. Each piece in the list includes its facing
+    /// (up or down) so that the caller can determine whether it is visible or hidden.
+    pub fn get_all_pieces(&self) -> Vec<PieceWithFacing> {
+        self.pieces
+            .values()
+            .flat_map(|list| list.iter().cloned())
+            .collect()
+    }
+
     /// Places two pieces on the board for a given player (direction). Each player can place up to 8
     /// pieces on the board. This method returns `true` if the pieces were successfully placed, or
     /// `false` if the player already has 8 pieces on the board and cannot place more.
-    pub fn place_pieces(&mut self, direction: BoardDirection, top_piece: PieceWithFacing, bottom_piece: PieceWithFacing) -> bool{
-        let list = self.pieces
-            .entry(direction)
-            .or_insert_with(Vec::new);
+    pub fn place_pieces(
+        &mut self,
+        direction: BoardDirection,
+        top_piece: PieceWithFacing,
+        bottom_piece: Piece,
+    ) -> bool {
+        let list = self.pieces.entry(direction).or_insert_with(Vec::new);
         if list.len() >= 8 {
             return false;
         }
         list.push(top_piece);
-        list.push(bottom_piece);
+        list.push(PieceWithFacing::Up(bottom_piece));
         true
     }
 }
