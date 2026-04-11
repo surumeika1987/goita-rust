@@ -303,3 +303,36 @@ impl Board {
         true
     }
 }
+
+/// Constructs a `Hand` from repeated piece entries.
+///
+/// This macro accepts one or more `piece => count` pairs and expands them
+/// into a vector by pushing each `piece` value `count` times, in declaration order.
+/// The resulting vector is then converted into a `Hand` via `Hand::from`.
+///
+/// # Arguments
+/// - `piece`: A piece expression to insert.
+/// - `count`: The number of times to insert that piece.
+///
+/// # Returns
+/// A `Hand` containing all expanded pieces.
+///
+/// # Example
+/// ```rust
+/// let h = hand! {
+///     Piece::Pawn => 3,
+///     Piece::King => 1,
+/// };
+/// ```
+#[macro_export]
+macro_rules! hand {
+    ($($piece:expr => $count:expr),* $(,)?) => {{
+        let mut v = Vec::new();
+        $(
+            for _ in 0..$count {
+                v.push($piece);
+            }
+        )*
+        Hand::from(v)
+    }};
+}
