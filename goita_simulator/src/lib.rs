@@ -712,4 +712,14 @@ impl GoitaGame {
             None
         }
     }
+
+    /// Returns the hand of the specified player in the current round.
+    ///
+    /// If no round is currently active, this returns `None`.
+    /// Otherwise, it returns `Some(&Hand)` for the given `player`.
+    pub fn player_hand(&self, player: BoardDirection) -> Option<&Hand> {
+        self.current_round
+            .as_ref()
+            .map(|round| round.get_player_hand(player))
+    }
 }
