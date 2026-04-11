@@ -165,6 +165,7 @@ pub enum ApplyResult {
 }
 
 // 1ラウンド分の進行状態を保持する構造体。
+#[derive(Debug)]
 struct GoitaRound {
     // 現在の盤面
     board: Board,
@@ -540,6 +541,7 @@ impl GoitaRound {
 /// Represents the overall game state across rounds.
 ///
 /// Stores the cumulative team scores and the currently active round.
+#[derive(Debug)]
 pub struct GoitaGame {
     /// game rule configuration, which can be extended in the future to include more parameters if
     /// needed.
@@ -743,5 +745,64 @@ impl GoitaGame {
         self.current_round
             .as_ref()
             .map(|round| round.get_player_hand(player))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_game_flow() {
+        let mut game = GoitaGame::new_with_seed(GoitaRule::default(), BoardDirection::North, 12345);
+
+        // Start the first round
+        let deal_event = game.start_new_round().unwrap();
+        println!("Deal event: {:?}", deal_event);
+
+        println!(
+            "Hands(North): {:?}",
+            game.player_hand(BoardDirection::North)
+        );
+        assert_eq!(
+            *game.player_hand(BoardDirection::North).unwrap(),
+            Hand::new_with_pieces(vec![
+                Piece::Pawn,
+                Piece::Pawn,
+                Piece::Lance,
+                Piece::Lance,
+                Piece::Lance,
+                Piece::Silver,
+                Piece::Gold,
+                Piece::Gold,
+            ])
+        );
+        println!(
+            "Hands(South): {:?}",
+            game.player_hand(BoardDirection::South)
+        );
+        println!("Hands(East): {:?}", game.player_hand(BoardDirection::East));
+        println!("Hands(West): {:?}", game.player_hand(BoardDirection::West));
+
+        // Simulate some turns (these actions are just examples and may not be valid)
+        let action_result = game.play_turn(
+            BoardDirection::North,
+            PlayerAction::Place {
+                top: Piece::Pawn,
+                bottom: Piece::Pawn,
+            },
+        );
+        println!("North places Pawn-Pawn: {:?}", action_result);
+
+        let action_result = game.play_turn(
+            BoardDirection::East,
+            PlayerAction::Place {
+                top: Piece::Rook,
+                bottom: Piece::Rook,
+            },
+        );
+        println!("East places Rook-Rook: {:?}", action_result);
+
+        // Continue simulating turns until the round ends...
     }
 }
