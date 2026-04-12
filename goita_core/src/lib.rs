@@ -51,6 +51,28 @@ impl Piece {
     }
 }
 
+/// Default piece distribution used to initialize a standard Goita set.
+///
+/// Each tuple represents `(Piece, count)`, and the total number of pieces is 32:
+/// - King: 2
+/// - Rook: 2
+/// - Bishop: 2
+/// - Gold: 4
+/// - Silver: 4
+/// - Knight: 4
+/// - Lance: 4
+/// - Pawn: 10
+pub const DEFAULT_PIECES: [(Piece, u8); 8] = [
+    (Piece::King, 2),
+    (Piece::Rook, 2),
+    (Piece::Bishop, 2),
+    (Piece::Gold, 4),
+    (Piece::Silver, 4),
+    (Piece::Knight, 4),
+    (Piece::Lance, 4),
+    (Piece::Pawn, 10),
+];
+
 /// A player's hand of pieces, tracking the count of each piece type.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Hand {
@@ -222,6 +244,7 @@ impl From<BoardDirection> for Team {
 /// Represents a piece on the board along with its facing (up or down). In Goita, pieces can be
 /// placed face-up (visible to all players) or face-down (hidden from all players). This struct
 /// encapsulates both the piece type and its orientation on the board.
+// TODO: Change Up to FaceUp and Down to FaceDown for better clarity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PieceWithFacing {
     /// The piece is face-up and it content is visible to all players.

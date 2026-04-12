@@ -12,6 +12,8 @@ pub enum Error {
     /// The specified piece is not available in the player's hand.
     PieceNotInHand,
     /// The piece placement is not valid under the game rules.
+    // TODO: Add reason details (e.g. "top piece cannot be placed face-up", "king cannot be placed
+    // on bottom if certain conditions are not met", etc.)
     InvalidPlace,
     /// The pass action is not valid in the current game state.
     InvalidPass,
@@ -164,50 +166,77 @@ pub enum ApplyResult {
     RoundOver(RoundResult),
 }
 
-// 1ラウンド分の進行状態を保持する構造体。
+/// Represents the state of a single Goita round.
+///
+/// This struct tracks:
+/// - the current board state,
+/// - whose turn it is,
+/// - who last placed a piece (if any),
+/// - each of the four players' hands, and
+/// - whether the round has ended.
 #[derive(Debug)]
-struct GoitaRound {
-    // 現在の盤面
+pub struct GoitaRound {
+    /// The current board state.
     board: Board,
-    // 現在の手番プレイヤー
-    current_player: BoardDirection,
-    // 最後に駒を置いたプレイヤー（未配置なら None）
+    /// The player whose turn it is.
+    current_turn_player: BoardDirection,
+    /// The player who most recently placed a piece, or `None` if no piece has been placed yet.
     last_place_player: Option<BoardDirection>,
-    // 4人分の手札
+    /// The hands of all four players.
     hands: [Hand; 4],
-    // ラウンド終了フラグ
+    /// Indicates whether this round is over.
     round_is_over: bool,
 }
 
 impl GoitaRound {
-    // 指定した開始手番プレイヤーでラウンドを初期化する。
+    /// Creates a new `GoitaRound` with the specified starting player.
+    ///
+    /// # Arguments
+    /// * `init_turn_player` - The player who takes the first turn in this round.
+    ///
+    /// # Returns
+    /// A newly initialized `GoitaRound` with:
+    /// - an empty board,
+    /// - no last placed player,
+    /// - empty hands for all four players, and
+    /// - `round_is_over` set to `false`.
     pub fn new(init_turn_player: BoardDirection) -> Self {
         Self {
             board: Board::new(),
-            current_player: init_turn_player,
+            current_turn_player: init_turn_player,
             last_place_player: None,
             hands: [Hand::new(), Hand::new(), Hand::new(), Hand::new()],
             round_is_over: false,
         }
     }
 
+    /// Shuffles the default 32-piece set and deals hands to all four players.
+    ///
+    /// This method:
+    /// - expands `DEFAULT_PIECES` into a full deck of 32 pieces,
+    /// - shuffles the deck using the provided RNG,
+    /// - deals 8 pieces to each player as `Hand`,
+    /// - stores the 4 resulting hands in `self.hands`,
+    /// - evaluates the initial deal event via `check_deal_event`.
+    ///
+    /// If the deal event is either `FivePawnSameTeam` or `HandRank`,
+    /// `self.round_is_over` is set to `true`.
+    ///
+    /// # Parameters
+    /// - `rng`: Random number generator used for shuffling.
+    ///
+    /// # Returns
+    /// The `DealEvent` detected immediately after dealing.
+    ///
+    /// # Panics
+    /// Panics if the expanded deck cannot be converted into exactly four
+    /// 8-piece hands (the implementation assumes a valid 32-piece deck).
     // 駒の既定構成を展開してシャッフルし、8枚ずつ4人分の手札として配る。
     // - `DEFAULT_PIECES` の (駒種, 枚数) から全32枚の配列を生成
     // - 乱数で順序をランダム化
     // - 8枚ごとに `Hand` を作成し、4人分の `self.hands` に格納
     // - 32枚ちょうどで4分割できる前提のため `try_into().unwrap()` を使用
     pub fn shuffle_and_deal_hands(&mut self, rng: &mut rand::rngs::StdRng) -> DealEvent {
-        const DEFAULT_PIECES: [(Piece, u8); 8] = [
-            (Piece::King, 2),
-            (Piece::Rook, 2),
-            (Piece::Bishop, 2),
-            (Piece::Gold, 4),
-            (Piece::Silver, 4),
-            (Piece::Knight, 4),
-            (Piece::Lance, 4),
-            (Piece::Pawn, 10),
-        ];
-
         let mut expanded: Vec<Piece> = DEFAULT_PIECES
             .iter()
             .flat_map(|(piece, count)| std::iter::repeat(*piece).take(*count as usize))
@@ -339,11 +368,59 @@ impl GoitaRound {
         DealEvent::Normal
     }
 
-    // 指定したプレイヤーの手札を参照として返す。
-    pub fn get_player_hand(&self, player: BoardDirection) -> &Hand {
+    /// Returns a shared reference to the specified player's hand.
+    ///
+    /// # Parameters
+    /// - `player`: The board direction identifying the target player.
+    ///
+    /// # Returns
+    /// A shared reference to that player's `Hand`.
+    pub fn player_hand(&self, player: BoardDirection) -> &Hand {
         &self.hands[player as usize]
     }
 
+    /// Returns the player whose turn it currently is.
+    ///
+    /// # Returns
+    /// - `Some(BoardDirection)` if the round is still in progress.
+    /// - `None` if the round has already ended.
+    pub fn current_turn_player(&self) -> Option<BoardDirection> {
+        if self.round_is_over {
+            None
+        } else {
+            Some(self.current_turn_player)
+        }
+    }
+
+    /// Returns whether the current round has ended.
+    ///
+    /// # Returns
+    /// `true` if the round is over, otherwise `false`.
+    pub fn round_is_over(&self) -> bool {
+        self.round_is_over
+    }
+
+    /// Applies a player's action and returns whether the round continues or ends.
+    ///
+    /// Validation and behavior:
+    /// - Returns `Error::NotYourTurn` if `player` is not the current turn player.
+    /// - Returns `Error::RoundIsOver` if the round has already ended.
+    /// - `PlayerAction::Pass` is valid only if another player made the last placement;
+    ///   otherwise returns `Error::InvalidPass`.
+    /// - `PlayerAction::Place { top, bottom }` delegates piece placement to `place_pieces`.
+    ///
+    /// After applying the action, this method evaluates round completion via
+    /// `check_round_over`:
+    /// - returns `ApplyResult::RoundOver(...)` when finished and sets `round_is_over = true`,
+    /// - otherwise returns `ApplyResult::Continuing`.
+    ///
+    /// The turn is then advanced with `next_turn()`.
+    ///
+    /// # Errors
+    /// - `Error::NotYourTurn`
+    /// - `Error::RoundIsOver`
+    /// - `Error::InvalidPass`
+    /// - Any error propagated from `place_pieces`
     // プレイヤーの行動を適用し、結果（継続 or ラウンド終了）を返す。
     // - 手番プレイヤーでない場合は `NotYourTurn`
     // - ラウンド終了済みなら `RoundIsOver`
@@ -355,35 +432,37 @@ impl GoitaRound {
         player: BoardDirection,
         action: PlayerAction,
     ) -> Result<ApplyResult, Error> {
-        if player != self.current_player {
-            return Err(Error::NotYourTurn);
-        }
-        if self.round_is_over {
-            return Err(Error::RoundIsOver);
-        }
-        match action {
-            PlayerAction::Pass => {
-                if let Some(last_place_player) = self.last_place_player {
-                    if player == last_place_player {
+        if let Some(turn_player) = self.current_turn_player() {
+            if player != turn_player {
+                return Err(Error::NotYourTurn);
+            }
+            match action {
+                PlayerAction::Pass => {
+                    if let Some(last_place_player) = self.last_place_player {
+                        if player == last_place_player {
+                            return Err(Error::InvalidPass);
+                        }
+                    } else {
                         return Err(Error::InvalidPass);
                     }
-                } else {
-                    return Err(Error::InvalidPass);
+                }
+                PlayerAction::Place { top, bottom } => {
+                    self.place_pieces(player, top, bottom)?;
                 }
             }
-            PlayerAction::Place { top, bottom } => {
-                self.place_pieces(player, top, bottom)?;
-            }
-        }
 
-        let round_result = self
-            .check_round_over()
-            .map(ApplyResult::RoundOver)
-            .unwrap_or(ApplyResult::Continuing);
-        if let ApplyResult::RoundOver(_) = round_result {
-            self.round_is_over = true;
+            let round_result = self
+                .check_round_over()
+                .map(ApplyResult::RoundOver)
+                .unwrap_or(ApplyResult::Continuing);
+            if let ApplyResult::RoundOver(_) = round_result {
+                self.round_is_over = true;
+            }
+            self.next_turn();
+            Ok(round_result)
+        } else {
+            Err(Error::RoundIsOver)
         }
-        Ok(round_result)
     }
 
     // 指定プレイヤーが top/bottom の2枚を場に出せるかを検証し、問題なければ配置して手札を更新する。
@@ -460,14 +539,13 @@ impl GoitaRound {
         let _ = self.hands[player_index].remove(bottom_piece);
 
         self.last_place_player = Some(player);
-        self.next_turn();
 
         Ok(())
     }
 
     // 手番を次のプレイヤーへ進める。
     fn next_turn(&mut self) {
-        self.current_player = self.current_player.next();
+        self.current_turn_player = self.current_turn_player.next();
     }
 
     // ラウンド終了条件を判定し、成立していれば勝利チームと得点を返す。
@@ -517,9 +595,13 @@ impl GoitaRound {
     // 王を下段に置けるかを判定する。
     // - 自分の手札に王が2枚ある場合は配置可能
     // - 盤面全体で「表向きの王」がちょうど1枚ある場合も配置可能
+    // - 8枚目として王を置くときはいつでも配置可能
     // 上記以外は配置不可。
     fn can_place_king(&self, player: BoardDirection) -> bool {
         if self.hands[player as usize].count(Piece::King) == 2 {
+            return true;
+        }
+        if self.board.get_pieces(player).len() == 6 {
             return true;
         }
         if self
@@ -543,8 +625,8 @@ impl GoitaRound {
 /// Stores the cumulative team scores and the currently active round.
 #[derive(Debug)]
 pub struct GoitaGame {
-    /// game rule configuration, which can be extended in the future to include more parameters if
-    /// needed.
+    // game rule configuration, which can be extended in the future to include more parameters if
+    // needed.
     game_rule: GoitaRule,
     // Cumulative score for the North-South team.
     ns_score: u32,
@@ -689,6 +771,17 @@ impl GoitaGame {
             Err(Error::GameNotStarted)
         }
     }
+
+    pub fn current_turn_plyer(&self) -> Option<BoardDirection> {
+        if let Some(_) = self.check_game_over() {
+            return None;
+        }
+
+        self.current_round
+            .as_ref()
+            .and_then(|round| round.current_turn_player())
+    }
+
     /// Returns the current score for the North-South team.
     pub fn ns_score(&self) -> u32 {
         self.ns_score
@@ -744,7 +837,14 @@ impl GoitaGame {
     pub fn player_hand(&self, player: BoardDirection) -> Option<&Hand> {
         self.current_round
             .as_ref()
-            .map(|round| round.get_player_hand(player))
+            .map(|round| round.player_hand(player))
+    }
+
+    // TODO: return ref instead of cloning the pieces if performance becomes an issue
+    pub fn player_board(&self, player: BoardDirection) -> Option<Vec<PieceWithFacing>> {
+        self.current_round
+            .as_ref()
+            .map(|round| round.board.get_pieces(player))
     }
 }
 
@@ -753,12 +853,496 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_game_flow() {
-        let mut game = GoitaGame::new_with_seed(GoitaRule::default(), BoardDirection::North, 12345);
+    fn test_normal_game_flow() {
+        let mut game = GoitaGame::new_with_seed(
+            GoitaRule { winning_score: 50 },
+            BoardDirection::North,
+            12345,
+        );
 
-        // Start the first round
+        // Cehck GameNotStarted error when trying to play a turn before starting a round
+        let action_result = game.play_turn(
+            BoardDirection::North,
+            PlayerAction::Place {
+                top: Piece::Pawn,
+                bottom: Piece::Pawn,
+            },
+        );
+        println!(
+            "North tries to place Pawn-Pawn before starting round: {:?}",
+            action_result
+        );
+        assert_eq!(action_result, Err(Error::GameNotStarted));
+
+        // Start the first round with normal deal (no special hand rank or 5-shi event)
         let deal_event = game.start_new_round().unwrap();
         println!("Deal event: {:?}", deal_event);
+        assert_eq!(deal_event, DealEvent::Normal);
+
+        // Assert the initial hands are as expected based on the fixed seed
+        println!(
+            "Hands(North): {:?}",
+            game.player_hand(BoardDirection::North)
+        );
+        assert_eq!(
+            *game.player_hand(BoardDirection::North).unwrap(),
+            hand! {
+                Piece::Pawn => 2,
+                Piece::Lance => 3,
+                Piece::Silver => 1,
+                Piece::Gold => 2,
+            }
+        );
+
+        println!("Hands(East): {:?}", game.player_hand(BoardDirection::East));
+        assert_eq!(
+            *game.player_hand(BoardDirection::East).unwrap(),
+            hand! {
+                Piece::Lance  => 1,
+                Piece::Rook   => 1,
+                Piece::Silver => 1,
+                Piece::Pawn   => 1,
+                Piece::Bishop => 1,
+                Piece::Knight => 3,
+            }
+        );
+
+        println!(
+            "Hands(South): {:?}",
+            game.player_hand(BoardDirection::South)
+        );
+        assert_eq!(
+            *game.player_hand(BoardDirection::South).unwrap(),
+            hand! {
+                Piece::King   => 1,
+                Piece::Rook   => 1,
+                Piece::Pawn   => 3,
+                Piece::Knight => 1,
+                Piece::Silver => 1,
+                Piece::Gold   => 1,
+            }
+        );
+
+        println!("Hands(West): {:?}", game.player_hand(BoardDirection::West));
+        assert_eq!(
+            *game.player_hand(BoardDirection::West).unwrap(),
+            hand! {
+                Piece::King   => 1,
+                Piece::Bishop => 1,
+                Piece::Pawn   => 4,
+                Piece::Silver => 1,
+                Piece::Gold   => 1,
+            }
+        );
+
+        // Check NotYourTurn error
+        let action_result = game.play_turn(
+            BoardDirection::West,
+            PlayerAction::Place {
+                top: Piece::Pawn,
+                bottom: Piece::Pawn,
+            },
+        );
+        println!(
+            "West tries to place Pawn-Pawn on first turn: {:?}",
+            action_result
+        );
+        assert_eq!(action_result, Err(Error::NotYourTurn));
+
+        // Check InvalidPass error (cannot pass on first turn)
+        let action_result = game.play_turn(BoardDirection::North, PlayerAction::Pass);
+        println!("North tries to pass on first turn: {:?}", action_result);
+        assert_eq!(action_result, Err(Error::InvalidPass));
+
+        // Check PieceNotInHand error (try to place a piece not in hand)
+        let action_result = game.play_turn(
+            BoardDirection::North,
+            PlayerAction::Place {
+                top: Piece::Rook,
+                bottom: Piece::Rook,
+            },
+        );
+        println!(
+            "North tries to place Rook-Rook (not in hand): {:?}",
+            action_result
+        );
+        assert_eq!(action_result, Err(Error::PieceNotInHand));
+
+        // Cehck Normal place(first turn, so top can be placed face-down regardless of piece type)
+        let action_result = game.play_turn(
+            BoardDirection::North,
+            PlayerAction::Place {
+                top: Piece::Pawn,
+                bottom: Piece::Lance,
+            },
+        );
+        println!("North places Pawn-Lance on first turn: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+        println!(
+            "North's board after placing Pawn-Lance: {:?}",
+            game.player_board(BoardDirection::North)
+        );
+        assert_eq!(
+            game.player_board(BoardDirection::North).unwrap(),
+            vec![
+                PieceWithFacing::Down(Piece::Pawn),
+                PieceWithFacing::Up(Piece::Lance),
+            ]
+        );
+
+        // Chrck InvalidPlace error (try to place a piece different from the last placed piece
+        // face-up)
+        let action_result = game.play_turn(
+            BoardDirection::East,
+            PlayerAction::Place {
+                top: Piece::Rook,
+                bottom: Piece::Pawn,
+            },
+        );
+        println!(
+            "East tries to place Rook-Pawn (top piece different from last placed Pawn and face-up): {:?}",
+            action_result
+        );
+        assert_eq!(action_result, Err(Error::InvalidPlace));
+
+        // Check Normal Place
+        let action_result = game.play_turn(
+            BoardDirection::East,
+            PlayerAction::Place {
+                top: Piece::Lance,
+                bottom: Piece::Knight,
+            },
+        );
+        println!("East places Lance-Knight: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+        println!(
+            "East's board after placing Lance-Knight: {:?}",
+            game.player_board(BoardDirection::East)
+        );
+        assert_eq!(
+            game.player_board(BoardDirection::East).unwrap(),
+            vec![
+                PieceWithFacing::Up(Piece::Lance),
+                PieceWithFacing::Up(Piece::Knight),
+            ]
+        );
+
+        // Check InvalidPlace error(Place king when not having 2 kings in hand and no
+        // existing king on board)
+        let action_result = game.play_turn(
+            BoardDirection::South,
+            PlayerAction::Place {
+                top: Piece::Knight,
+                bottom: Piece::King,
+            },
+        );
+        println!(
+            "South tries to place King-King (only has 1 King in hand and no existing King on board): {:?}",
+            action_result
+        );
+        assert_eq!(action_result, Err(Error::InvalidPlace));
+
+        // Normal place(Use King)
+        let action_result = game.play_turn(
+            BoardDirection::South,
+            PlayerAction::Place {
+                top: Piece::King,
+                bottom: Piece::Pawn,
+            },
+        );
+        println!("South places King-Pawn: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+        println!(
+            "South's board after placing King-Pawn: {:?}",
+            game.player_board(BoardDirection::South)
+        );
+        assert_eq!(
+            game.player_board(BoardDirection::South).unwrap(),
+            vec![
+                PieceWithFacing::Up(Piece::King),
+                PieceWithFacing::Up(Piece::Pawn),
+            ]
+        );
+
+        // Check InvalidPlace error(try to place King when last placed piece is Pawn and top piece
+        // is King)
+        let action_result = game.play_turn(
+            BoardDirection::West,
+            PlayerAction::Place {
+                top: Piece::King,
+                bottom: Piece::Pawn,
+            },
+        );
+        println!(
+            "West tries to place King-Pawn (top piece is King and last placed piece is Pawn): {:?}",
+            action_result
+        );
+        assert_eq!(action_result, Err(Error::InvalidPlace));
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::West, PlayerAction::Pass);
+        println!("West passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // Normal place
+        let action_result = game.play_turn(
+            BoardDirection::North,
+            PlayerAction::Place {
+                top: Piece::Pawn,
+                bottom: Piece::Lance,
+            },
+        );
+        println!("North places Pawn-Lance: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+        println!(
+            "North's board after placing Pawn-Lance: {:?}",
+            game.player_board(BoardDirection::North)
+        );
+        assert_eq!(
+            game.player_board(BoardDirection::North).unwrap(),
+            vec![
+                PieceWithFacing::Down(Piece::Pawn),
+                PieceWithFacing::Up(Piece::Lance),
+                PieceWithFacing::Up(Piece::Pawn),
+                PieceWithFacing::Up(Piece::Lance),
+            ]
+        );
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::East, PlayerAction::Pass);
+        println!("East passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::South, PlayerAction::Pass);
+        println!("South passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // Check InvalidPlace(try to place King when last placed piece is Lance and top piece is
+        // King)
+        let action_result = game.play_turn(
+            BoardDirection::West,
+            PlayerAction::Place {
+                top: Piece::King,
+                bottom: Piece::Pawn,
+            },
+        );
+        println!(
+            "West tries to place King-Pawn (top piece is King and last placed piece is Lance): {:?}",
+            action_result
+        );
+        assert_eq!(action_result, Err(Error::InvalidPlace));
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::West, PlayerAction::Pass);
+        println!("West passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // Invalid pass(try to pass when last placed player is the same as current player)
+        let action_result = game.play_turn(BoardDirection::North, PlayerAction::Pass);
+        println!(
+            "North tries to pass (last placed player is the same as current player): {:?}",
+            action_result
+        );
+        assert_eq!(action_result, Err(Error::InvalidPass));
+
+        // Normal place
+        let action_result = game.play_turn(
+            BoardDirection::North,
+            PlayerAction::Place {
+                top: Piece::Silver,
+                bottom: Piece::Gold,
+            },
+        );
+        println!("North places Silver-Gold: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+        println!(
+            "North's board after placing Silver-Gold: {:?}",
+            game.player_board(BoardDirection::North),
+        );
+        assert_eq!(
+            game.player_board(BoardDirection::North).unwrap(),
+            vec![
+                PieceWithFacing::Down(Piece::Pawn),
+                PieceWithFacing::Up(Piece::Lance),
+                PieceWithFacing::Up(Piece::Pawn),
+                PieceWithFacing::Up(Piece::Lance),
+                PieceWithFacing::Down(Piece::Silver),
+                PieceWithFacing::Up(Piece::Gold),
+            ]
+        );
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::East, PlayerAction::Pass);
+        println!("East passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::South, PlayerAction::Pass);
+        println!("South passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // Normal place(Place king to botton)
+        let action_result = game.play_turn(
+            BoardDirection::West,
+            PlayerAction::Place {
+                top: Piece::Gold,
+                bottom: Piece::King,
+            },
+        );
+        println!("West places Gold-King: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+        println!(
+            "West's board after placing Gold-King: {:?}",
+            game.player_board(BoardDirection::West),
+        );
+        assert_eq!(
+            game.player_board(BoardDirection::West).unwrap(),
+            vec![
+                PieceWithFacing::Up(Piece::Gold),
+                PieceWithFacing::Up(Piece::King),
+            ]
+        );
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::North, PlayerAction::Pass);
+        println!("North passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::East, PlayerAction::Pass);
+        println!("East passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::South, PlayerAction::Pass);
+        println!("South passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // normal place
+        let action_result = game.play_turn(
+            BoardDirection::West,
+            PlayerAction::Place {
+                top: Piece::Bishop,
+                bottom: Piece::Silver,
+            },
+        );
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+        println!("West places Bishop-Silver: {:?}", action_result);
+        assert_eq!(
+            game.player_board(BoardDirection::West).unwrap(),
+            vec![
+                PieceWithFacing::Up(Piece::Gold),
+                PieceWithFacing::Up(Piece::King),
+                PieceWithFacing::Down(Piece::Bishop),
+                PieceWithFacing::Up(Piece::Silver),
+            ]
+        );
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::North, PlayerAction::Pass);
+        println!("North passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::East, PlayerAction::Pass);
+        println!("East passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::South, PlayerAction::Pass);
+        println!("South passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // normal place
+        let action_result = game.play_turn(
+            BoardDirection::West,
+            PlayerAction::Place {
+                top: Piece::Pawn,
+                bottom: Piece::Pawn,
+            },
+        );
+        println!("West places Pawn-Pawn: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+        println!(
+            "West's board after placing Pawn-Pawn: {:?}",
+            game.player_board(BoardDirection::West)
+        );
+        assert_eq!(
+            game.player_board(BoardDirection::West).unwrap(),
+            vec![
+                PieceWithFacing::Up(Piece::Gold),
+                PieceWithFacing::Up(Piece::King),
+                PieceWithFacing::Down(Piece::Bishop),
+                PieceWithFacing::Up(Piece::Silver),
+                PieceWithFacing::Down(Piece::Pawn),
+                PieceWithFacing::Up(Piece::Pawn),
+            ]
+        );
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::North, PlayerAction::Pass);
+        println!("North passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::East, PlayerAction::Pass);
+        println!("East passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // Normal pass
+        let action_result = game.play_turn(BoardDirection::South, PlayerAction::Pass);
+        println!("South passes: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+
+        // Normal place with end round(dobule up)
+        let action_result = game.play_turn(
+            BoardDirection::West,
+            PlayerAction::Place {
+                top: Piece::Pawn,
+                bottom: Piece::Pawn,
+            },
+        );
+        println!("West places Pawn-Pawn: {:?}", action_result);
+        assert_eq!(
+            action_result,
+            Ok(ApplyResult::RoundOver(RoundResult::new(
+                BoardDirection::West,
+                20
+            )))
+        );
+
+        // Check score
+        println!(
+            "Final Scores - North-South: {}, East-West: {}",
+            game.ns_score(),
+            game.ew_score()
+        );
+        assert_eq!(game.ns_score(), 0);
+        assert_eq!(game.ew_score(), 20);
+
+        // Check RoundIsOver error when trying to play a turn after round is over but before starting a new round
+        let action_result = game.play_turn(
+            BoardDirection::North,
+            PlayerAction::Place {
+                top: Piece::Pawn,
+                bottom: Piece::Pawn,
+            },
+        );
+        println!(
+            "North tries to place Pawn-Pawn after round is over: {:?}",
+            action_result
+        );
+        assert_eq!(action_result, Err(Error::RoundIsOver));
+
+        // Start Round and check if the starting player is set correctly based on the previous round
+        // result
+        game.start_new_round().unwrap();
+        println!(
+            "New round started. Starting player should be West based on previous round result. Current turn player: {:?}",
+            game.current_turn_plyer()
+        );
+        assert_eq!(game.current_turn_plyer(), Some(BoardDirection::West));
 
         println!(
             "Hands(North): {:?}",
@@ -766,25 +1350,73 @@ mod tests {
         );
         assert_eq!(
             *game.player_hand(BoardDirection::North).unwrap(),
-            Hand::new_with_pieces(vec![
-                Piece::Pawn,
-                Piece::Pawn,
-                Piece::Lance,
-                Piece::Lance,
-                Piece::Lance,
-                Piece::Silver,
-                Piece::Gold,
-                Piece::Gold,
-            ])
+            hand! {
+                Piece::Pawn   => 2,
+                Piece::King   => 1,
+                Piece::Knight => 1,
+                Piece::Silver => 1,
+                Piece::Lance  => 2,
+                Piece::Gold   => 1,
+            }
         );
+
+        println!("Hands(East): {:?}", game.player_hand(BoardDirection::East));
+        assert_eq!(
+            *game.player_hand(BoardDirection::East).unwrap(),
+            hand! {
+                Piece::Knight => 1,
+                Piece::Bishop => 2,
+                Piece::Pawn   => 2,
+                Piece::Lance  => 2,
+                Piece::Rook   => 1,
+            }
+        );
+
         println!(
             "Hands(South): {:?}",
             game.player_hand(BoardDirection::South)
         );
-        println!("Hands(East): {:?}", game.player_hand(BoardDirection::East));
-        println!("Hands(West): {:?}", game.player_hand(BoardDirection::West));
+        assert_eq!(
+            *game.player_hand(BoardDirection::South).unwrap(),
+            hand! {
+                Piece::Pawn   => 3,
+                Piece::Gold   => 2,
+                Piece::Rook   => 1,
+                Piece::Silver => 2,
+            }
+        );
 
-        // Simulate some turns (these actions are just examples and may not be valid)
+        println!("Hands(West): {:?}", game.player_hand(BoardDirection::West));
+        assert_eq!(
+            *game.player_hand(BoardDirection::West).unwrap(),
+            hand! {
+                Piece::King   => 1,
+                Piece::Silver => 1,
+                Piece::Gold   => 1,
+                Piece::Knight => 2,
+                Piece::Pawn   => 3,
+            }
+        );
+
+        // Normal place
+        let action_result = game.play_turn(
+            BoardDirection::West,
+            PlayerAction::Place {
+                top: Piece::Knight,
+                bottom: Piece::Pawn,
+            },
+        );
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+        println!("West places Knight-Pawn: {:?}", action_result);
+        assert_eq!(
+            game.player_board(BoardDirection::West).unwrap(),
+            vec![
+                PieceWithFacing::Down(Piece::Knight),
+                PieceWithFacing::Up(Piece::Pawn),
+            ]
+        );
+
+        // Normal place
         let action_result = game.play_turn(
             BoardDirection::North,
             PlayerAction::Place {
@@ -793,16 +1425,138 @@ mod tests {
             },
         );
         println!("North places Pawn-Pawn: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+        println!(
+            "North's board after placing Pawn-Pawn: {:?}",
+            game.player_board(BoardDirection::North)
+        );
+        assert_eq!(
+            game.player_board(BoardDirection::North).unwrap(),
+            vec![
+                PieceWithFacing::Up(Piece::Pawn),
+                PieceWithFacing::Up(Piece::Pawn),
+            ]
+        );
 
+        pass_until_last_placed_player(&mut game);
+
+        // Normal place
         let action_result = game.play_turn(
-            BoardDirection::East,
+            BoardDirection::North,
             PlayerAction::Place {
-                top: Piece::Rook,
-                bottom: Piece::Rook,
+                top: Piece::Knight,
+                bottom: Piece::Silver,
             },
         );
-        println!("East places Rook-Rook: {:?}", action_result);
+        println!("North places Knight-Silver: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+        println!(
+            "West's board after placing Knight-Silver: {:?}",
+            game.player_board(BoardDirection::North)
+        );
+        assert_eq!(
+            game.player_board(BoardDirection::North).unwrap(),
+            vec![
+                PieceWithFacing::Up(Piece::Pawn),
+                PieceWithFacing::Up(Piece::Pawn),
+                PieceWithFacing::Down(Piece::Knight),
+                PieceWithFacing::Up(Piece::Silver),
+            ]
+        );
 
-        // Continue simulating turns until the round ends...
+        pass_until_last_placed_player(&mut game);
+
+        // Normal place
+        let action_result = game.play_turn(
+            BoardDirection::North,
+            PlayerAction::Place {
+                top: Piece::Lance,
+                bottom: Piece::Lance,
+            },
+        );
+        println!("North places Lance-Lance: {:?}", action_result);
+        assert_eq!(action_result, Ok(ApplyResult::Continuing));
+        println!(
+            "North's board after placing Lance-Lance: {:?}",
+            game.player_board(BoardDirection::North)
+        );
+        assert_eq!(
+            game.player_board(BoardDirection::North).unwrap(),
+            vec![
+                PieceWithFacing::Up(Piece::Pawn),
+                PieceWithFacing::Up(Piece::Pawn),
+                PieceWithFacing::Down(Piece::Knight),
+                PieceWithFacing::Up(Piece::Silver),
+                PieceWithFacing::Down(Piece::Lance),
+                PieceWithFacing::Up(Piece::Lance),
+            ]
+        );
+
+        pass_until_last_placed_player(&mut game);
+
+        // Normal place
+        let action_result = game.play_turn(
+            BoardDirection::North,
+            PlayerAction::Place {
+                top: Piece::Gold,
+                bottom: Piece::King,
+            },
+        );
+        println!("North places Gold-King: {:?}", action_result);
+        assert_eq!(
+            action_result,
+            Ok(ApplyResult::RoundOver(RoundResult::new(
+                BoardDirection::North,
+                50,
+            )))
+        );
+        println!(
+            "North's board after placing Gold-King: {:?}",
+            game.player_board(BoardDirection::North)
+        );
+        assert_eq!(
+            game.player_board(BoardDirection::North).unwrap(),
+            vec![
+                PieceWithFacing::Up(Piece::Pawn),
+                PieceWithFacing::Up(Piece::Pawn),
+                PieceWithFacing::Down(Piece::Knight),
+                PieceWithFacing::Up(Piece::Silver),
+                PieceWithFacing::Down(Piece::Lance),
+                PieceWithFacing::Up(Piece::Lance),
+                PieceWithFacing::Down(Piece::Gold),
+                PieceWithFacing::Up(Piece::King),
+            ]
+        );
+
+        // Check Error GameIsOver when trying to start new round after game is over
+        let round_result = game.start_new_round();
+        println!(
+            "Trying to start new round after game is over: {:?}",
+            round_result
+        );
+        assert_eq!(round_result, Err(Error::GameIsOver));
+
+        // Check game result
+        let game_result = game.check_game_over();
+        println!(
+            "Game result after North reaches winning score: {:?}",
+            game_result
+        );
+        assert_eq!(game_result, Some(GameResult::new(Team::NorthSouth, 50, 20)));
+    }
+
+    // 最後に駒をおいたプレイヤーまでパスするヘルパー関数
+    fn pass_until_last_placed_player(game: &mut GoitaGame) {
+        for _ in 0..3 {
+            // Normal pass
+            let player = game.current_turn_plyer().unwrap();
+            let action_result = game.play_turn(player, PlayerAction::Pass);
+            if let Err(Error::InvalidPass) = action_result {
+                // If the pass is invalid, it means the last placed player is the same as the current player,
+                // so we break the loop to avoid infinite loop.
+                break;
+            }
+            println!("{:?} passes: {:?}", player, action_result);
+        }
     }
 }
