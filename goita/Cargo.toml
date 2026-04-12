@@ -1,5 +1,5 @@
 [package]
-name = "goita_simulator"
+name = "goita"
 version = "0.1.0"
 edition = "2024"
 

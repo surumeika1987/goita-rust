@@ -67,6 +67,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "goita"
+version = "0.1.0"
+dependencies = [
+ "goita_core",
+ "rand",
+]
+
+[[package]]
 name = "goita_cli"
 version = "0.1.0"
 dependencies = [
@@ -76,14 +84,6 @@ dependencies = [
 [[package]]
 name = "goita_core"
 version = "0.1.0"
-
-[[package]]
-name = "goita_simulator"
-version = "0.1.0"
-dependencies = [
- "goita_core",
- "rand",
-]
 
 [[package]]
 name = "hashbrown"

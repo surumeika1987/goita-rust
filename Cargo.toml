@@ -3,5 +3,5 @@
 members = [
     "goita_cli",
     "goita_core",
-    "goita_simulator"
+    "goita"
 ]
