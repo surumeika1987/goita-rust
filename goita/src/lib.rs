@@ -834,13 +834,12 @@ impl GoitaGame {
     ///
     /// If no round is currently active, this returns `None`.
     /// Otherwise, it returns `Some(&Hand)` for the given `player`.
-    pub fn player_hand(&self, player: BoardDirection) -> Option<&Hand> {
+    pub fn player_hand(&self, player: BoardDirection) -> Option<Vec<Piece>> {
         self.current_round
             .as_ref()
-            .map(|round| round.player_hand(player))
+            .map(|round| round.player_hand(player).pieces())
     }
 
-    // TODO: return ref instead of cloning the pieces if performance becomes an issue
     pub fn player_board(&self, player: BoardDirection) -> Option<Vec<PieceWithFacing>> {
         self.current_round
             .as_ref()
@@ -851,6 +850,20 @@ impl GoitaGame {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // 駒と枚数の組み合わせから手札(Vec)を生成する補助マクロ。
+    // `piece => count` を可変長で受け取り、各駒を指定枚数だけ `v` に追加して返す。
+    macro_rules! hand {
+        ($($piece:expr => $count:expr),* $(,)?) => {{
+            let mut v = Vec::new();
+            $(
+                for _ in 0..$count {
+                    v.push($piece);
+                }
+            )*
+            v
+        }};
+    }
 
     // 通常時のゲームの流れを通してテストする。（5し等のイベントなし)
     // テスト項目
@@ -900,10 +913,10 @@ mod tests {
         assert_eq!(
             *game.player_hand(BoardDirection::North).unwrap(),
             hand! {
-                Piece::Pawn => 2,
-                Piece::Lance => 3,
-                Piece::Silver => 1,
                 Piece::Gold => 2,
+                Piece::Silver => 1,
+                Piece::Lance => 3,
+                Piece::Pawn => 2,
             }
         );
 
@@ -911,12 +924,12 @@ mod tests {
         assert_eq!(
             *game.player_hand(BoardDirection::East).unwrap(),
             hand! {
-                Piece::Lance  => 1,
                 Piece::Rook   => 1,
-                Piece::Silver => 1,
-                Piece::Pawn   => 1,
                 Piece::Bishop => 1,
+                Piece::Silver => 1,
                 Piece::Knight => 3,
+                Piece::Lance  => 1,
+                Piece::Pawn   => 1,
             }
         );
 
@@ -929,10 +942,10 @@ mod tests {
             hand! {
                 Piece::King   => 1,
                 Piece::Rook   => 1,
-                Piece::Pawn   => 3,
-                Piece::Knight => 1,
-                Piece::Silver => 1,
                 Piece::Gold   => 1,
+                Piece::Silver => 1,
+                Piece::Knight => 1,
+                Piece::Pawn   => 3,
             }
         );
 
@@ -942,9 +955,9 @@ mod tests {
             hand! {
                 Piece::King   => 1,
                 Piece::Bishop => 1,
-                Piece::Pawn   => 4,
-                Piece::Silver => 1,
                 Piece::Gold   => 1,
+                Piece::Silver => 1,
+                Piece::Pawn   => 4,
             }
         );
 
@@ -1364,12 +1377,12 @@ mod tests {
         assert_eq!(
             *game.player_hand(BoardDirection::North).unwrap(),
             hand! {
-                Piece::Pawn   => 2,
                 Piece::King   => 1,
-                Piece::Knight => 1,
-                Piece::Silver => 1,
-                Piece::Lance  => 2,
                 Piece::Gold   => 1,
+                Piece::Silver => 1,
+                Piece::Knight => 1,
+                Piece::Lance  => 2,
+                Piece::Pawn   => 2,
             }
         );
 
@@ -1377,11 +1390,11 @@ mod tests {
         assert_eq!(
             *game.player_hand(BoardDirection::East).unwrap(),
             hand! {
-                Piece::Knight => 1,
-                Piece::Bishop => 2,
-                Piece::Pawn   => 2,
-                Piece::Lance  => 2,
                 Piece::Rook   => 1,
+                Piece::Bishop => 2,
+                Piece::Knight => 1,
+                Piece::Lance  => 2,
+                Piece::Pawn   => 2,
             }
         );
 
@@ -1392,10 +1405,10 @@ mod tests {
         assert_eq!(
             *game.player_hand(BoardDirection::South).unwrap(),
             hand! {
-                Piece::Pawn   => 3,
-                Piece::Gold   => 2,
                 Piece::Rook   => 1,
+                Piece::Gold   => 2,
                 Piece::Silver => 2,
+                Piece::Pawn   => 3,
             }
         );
 
@@ -1404,8 +1417,8 @@ mod tests {
             *game.player_hand(BoardDirection::West).unwrap(),
             hand! {
                 Piece::King   => 1,
-                Piece::Silver => 1,
                 Piece::Gold   => 1,
+                Piece::Silver => 1,
                 Piece::Knight => 2,
                 Piece::Pawn   => 3,
             }
