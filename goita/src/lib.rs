@@ -2,10 +2,14 @@ use goita_core::{Board, DEFAULT_PIECES, Hand};
 pub use goita_core::{BoardDirection, Piece, PieceWithFacing, PlayerAction, Team};
 use rand;
 use rand::prelude::*;
+use std::collections::HashMap;
 
 /// Errors that can occur while processing a game action.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Error {
+    /// The specified hand is invalid (e.g. wrong number of pieces, contains pieces that don't exist
+    /// in the game, etc.).
+    InvalidHand,
     /// The GameNotStarted.
     GameNotStarted,
     /// The action was attempted by a player who is not the current turn player.
@@ -211,32 +215,21 @@ impl GoitaRound {
         }
     }
 
-    /// Shuffles the default 32-piece set and deals hands to all four players.
+    // DEFAULT_PIECES を枚数分だけ展開して山札を作成する。
+    // 乱数生成器 rng を使って山札をシャッフルする。
+    // 8枚ずつ4人分の手札に分割し、配列（4手）へ変換する。
+    // 生成した手札を deal_hands に渡して検証・反映し、配牌イベントを返す。
+    /// Shuffles the full piece set and deals hands to all four players.
     ///
-    /// This method:
-    /// - expands `DEFAULT_PIECES` into a full deck of 32 pieces,
-    /// - shuffles the deck using the provided RNG,
-    /// - deals 8 pieces to each player as `Hand`,
-    /// - stores the 4 resulting hands in `self.hands`,
-    /// - evaluates the initial deal event via `check_deal_event`.
+    /// This method expands `DEFAULT_PIECES` into a full deck, shuffles it with the
+    /// provided random number generator, splits it into 4 hands of 8 pieces, and
+    /// delegates validation/state update to `deal_hands`.
     ///
-    /// If the deal event is either `FivePawnSameTeam` or `HandRank`,
-    /// `self.round_is_over` is set to `true`.
-    ///
-    /// # Parameters
-    /// - `rng`: Random number generator used for shuffling.
+    /// # Arguments
+    /// * `rng` - Random number generator used to shuffle the expanded deck.
     ///
     /// # Returns
-    /// The `DealEvent` detected immediately after dealing.
-    ///
-    /// # Panics
-    /// Panics if the expanded deck cannot be converted into exactly four
-    /// 8-piece hands (the implementation assumes a valid 32-piece deck).
-    // 駒の既定構成を展開してシャッフルし、8枚ずつ4人分の手札として配る。
-    // - `DEFAULT_PIECES` の (駒種, 枚数) から全32枚の配列を生成
-    // - 乱数で順序をランダム化
-    // - 8枚ごとに `Hand` を作成し、4人分の `self.hands` に格納
-    // - 32枚ちょうどで4分割できる前提のため `try_into().unwrap()` を使用
+    /// Returns the resulting `DealEvent` after dealing and validating hands.
     pub fn shuffle_and_deal_hands(&mut self, rng: &mut rand::rngs::StdRng) -> DealEvent {
         let mut expanded: Vec<Piece> = DEFAULT_PIECES
             .iter()
@@ -245,9 +238,71 @@ impl GoitaRound {
 
         expanded.shuffle(rng);
 
-        self.hands = expanded
+        let hands = expanded
             .chunks(8)
-            .map(|chunk| Hand::from(chunk.to_vec()))
+            .map(|chunk| chunk.to_vec())
+            .collect::<Vec<Vec<Piece>>>()
+            .try_into()
+            .unwrap();
+
+        self.deal_hands(hands).unwrap()
+    }
+
+    // 4人分の手札を配り、牌構成の妥当性を検証する。
+    // - hands は「4手 × 各8枚」である必要がある。
+    // - 全手札を合算した牌の枚数分布が DEFAULT_PIECES と完全一致することを確認する。
+    // 妥当な場合は self.hands を更新し、配牌イベントを判定する。
+    // 配牌イベントが FivePawnSameTeam または HandRank の場合は round_is_over を true にする。
+    // 条件を満たさない場合は Error::InvalidHand を返す。
+    /// Deals and validates all players' hands.
+    ///
+    /// This function requires exactly four hands with eight pieces each.
+    /// It verifies that the aggregated piece counts across all hands match
+    /// `DEFAULT_PIECES` exactly.
+    ///
+    /// If validation succeeds, `self.hands` is updated and a deal event is checked.
+    /// When the deal event is `DealEvent::FivePawnSameTeam` or `DealEvent::HandRank`,
+    /// `self.round_is_over` is set to `true`.
+    ///
+    /// # Arguments
+    /// * `hands` - A vector containing four player hands, each with eight `Piece`s.
+    ///
+    /// # Returns
+    /// * `Ok(DealEvent)` - The detected deal event after updating the hands.
+    /// * `Err(Error::InvalidHand)` - Returned when hand shape or piece counts are invalid.
+    pub fn deal_hands(&mut self, hands: Vec<Vec<Piece>>) -> Result<DealEvent, Error> {
+        if hands.len() != 4 || hands.iter().any(|hand| hand.len() != 8) {
+            return Err(Error::InvalidHand);
+        }
+
+        let original_count_map: HashMap<Piece, u8> =
+            DEFAULT_PIECES
+                .iter()
+                .fold(HashMap::new(), |mut map, (piece, count)| {
+                    *map.entry(*piece).or_insert(0) += *count;
+                    map
+                });
+        let count_map: HashMap<Piece, u8> =
+            hands
+                .iter()
+                .flatten()
+                .fold(HashMap::new(), |mut map, piece| {
+                    *map.entry(*piece).or_insert(0) += 1;
+                    map
+                });
+
+        for key in original_count_map.keys() {
+            let original_count = original_count_map.get(key).unwrap();
+            let count = count_map.get(key).unwrap_or(&0);
+
+            if original_count != count {
+                return Err(Error::InvalidHand);
+            }
+        }
+
+        self.hands = hands
+            .iter()
+            .map(|hand| Hand::from(hand.clone()))
             .collect::<Vec<Hand>>()
             .try_into()
             .unwrap();
@@ -260,7 +315,7 @@ impl GoitaRound {
             _ => {}
         };
 
-        deal_event
+        Ok(deal_event)
     }
 
     // 配牌直後の役イベントを判定する。
