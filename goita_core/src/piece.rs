@@ -3,7 +3,7 @@
 /// Goita is a traditional board game from the Noto Peninsula (能登半島) of Japan,
 /// played with a subset of shogi pieces. Each variant corresponds to a specific
 /// piece with its own role in the game.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Piece {
     /// King (王)
     King,
@@ -46,25 +46,6 @@ impl Piece {
             Piece::Lance => 20,
             Piece::Pawn => 10,
         }
-    }
-}
-
-impl PartialOrd for Piece {
-    /// Compares two pieces by their point value.
-    ///
-    /// Returns `true` if `self.point_value()` is less than `other.point_value()`.
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Piece {
-    /// Compares two pieces by their point value.
-    ///
-    /// Returns the ordering of `self.point_value()` relative to
-    /// `other.point_value()`.
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.point_value().cmp(&other.point_value())
     }
 }
 
