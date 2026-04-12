@@ -18,6 +18,13 @@ pub enum BoardDirection {
 }
 
 impl From<BoardDirection> for usize {
+    /// Converts a [`BoardDirection`] into its corresponding numeric index.
+    ///
+    /// The mapping is:
+    /// - `North` -> `0`
+    /// - `East` -> `1`
+    /// - `South` -> `2`
+    /// - `West` -> `3`
     fn from(d: BoardDirection) -> Self {
         match d {
             BoardDirection::North => 0,
@@ -28,7 +35,33 @@ impl From<BoardDirection> for usize {
     }
 }
 
+impl From<u8> for BoardDirection {
+    /// Converts a `u8` value into a [`BoardDirection`].
+    ///
+    /// The conversion is based on `value % 4`:
+    /// - `0` => [`BoardDirection::North`]
+    /// - `1` => [`BoardDirection::East`]
+    /// - `2` => [`BoardDirection::South`]
+    /// - `3` => [`BoardDirection::West`]
+    ///
+    /// # Panics
+    /// Panics if an unexpected remainder is produced (defensive fallback case).
+    fn from(value: u8) -> Self {
+        match value % 4 {
+            0 => BoardDirection::North,
+            1 => BoardDirection::East,
+            2 => BoardDirection::South,
+            3 => BoardDirection::West,
+            _ => panic!("Invalid value for BoardDirection: {}", value),
+        }
+    }
+}
+
 impl BoardDirection {
+    /// Returns the next clockwise direction.
+    ///
+    /// The rotation order is:
+    /// `North -> East -> South -> West -> North`.
     pub fn next(self) -> Self {
         match self {
             BoardDirection::North => BoardDirection::East,
@@ -79,6 +112,8 @@ pub enum PieceWithFacing {
 }
 
 impl From<PieceWithFacing> for Piece {
+    /// Converts a [`PieceWithFacing`] into its underlying [`Piece`],
+    /// ignoring whether it is facing up or down.
     fn from(pwf: PieceWithFacing) -> Self {
         match pwf {
             PieceWithFacing::Up(p) | PieceWithFacing::Down(p) => p,
@@ -153,6 +188,7 @@ impl Board {
 }
 
 impl Default for Board {
+    /// Returns the default `Board` value by delegating to [`Board::new`].
     fn default() -> Self {
         Self::new()
     }

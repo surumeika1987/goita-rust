@@ -9,6 +9,13 @@ pub struct Hand {
 }
 
 impl From<Vec<Piece>> for Hand {
+    /// Converts a vector of [`Piece`] into a [`Hand`].
+    ///
+    /// This is equivalent to calling [`Hand::new_with_pieces`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the provided pieces exceed the maximum hand size (8).
     fn from(pieces: Vec<Piece>) -> Self {
         Self::new_with_pieces(pieces)
     }
@@ -22,7 +29,13 @@ impl Hand {
         }
     }
 
-    /// Creates a hand initialized with the given pieces. The input vector can contain duplicates,
+    /// Creates a new `Hand` initialized with the given pieces.
+    ///
+    /// Each piece is added via [`Hand::add`], so the same validation rules apply.
+    ///
+    /// # Panics
+    ///
+    /// Panics if adding the provided pieces would exceed the maximum hand size (8).
     pub fn new_with_pieces(pieces: Vec<Piece>) -> Self {
         let mut hand = Self::new();
         for piece in pieces {
@@ -41,27 +54,35 @@ impl Hand {
         self.piece_counts.values().all(|&c| c == 0)
     }
 
-    /// Adds a piece to the hand. Returns `true` if the piece was added, or `false` if the hand
-    /// already has 8 pieces.
-    pub fn add(&mut self, piece: Piece) -> bool {
+    /// Adds a `Piece` to the hand.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the hand already contains 8 pieces, since a hand cannot
+    /// hold more than 8 pieces.
+    pub fn add(&mut self, piece: Piece) {
         if self.len() >= 8 {
-            return false;
+            panic!("Cannot add more than 8 pieces to a hand");
         }
 
         *self.piece_counts.entry(piece).or_insert(0) += 1;
-        true
     }
 
-    /// Removes one of the given piece from the hand.
-    /// Returns `true` if a piece was removed.
-    pub fn remove(&mut self, piece: Piece) -> bool {
+    /// Removes one instance of the specified [`Piece`] from the hand.
+    ///
+    /// If the piece is present with a count greater than zero, its count is
+    /// decremented and internal zero-count entries are cleaned up.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the specified piece is not present in the hand.
+    pub fn remove(&mut self, piece: Piece) {
         match self.piece_counts.get_mut(&piece) {
             Some(c) if *c > 0 => {
                 *c -= 1;
                 self.clean_counts();
-                true
             }
-            _ => false,
+            _ => panic!("Cannot remove piece {:?} from hand: not present", piece),
         }
     }
 
@@ -109,6 +130,9 @@ impl Hand {
 }
 
 impl Default for Hand {
+    /// Creates an empty [`Hand`] using the default configuration.
+    ///
+    /// This is equivalent to calling [`Hand::new`].
     fn default() -> Self {
         Self::new()
     }
