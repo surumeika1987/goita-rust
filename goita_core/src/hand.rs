@@ -121,11 +121,14 @@ impl Hand {
     /// assert_eq!(hand.pieces().len(), 3);
     /// ```
     pub fn pieces(&self) -> Vec<Piece> {
-        self.piece_counts
+        let mut pieces = self
+            .piece_counts
             .iter()
             .filter(|&(_, &c)| c > 0)
             .flat_map(|(&piece, &count)| std::iter::repeat(piece).take(count as usize))
-            .collect()
+            .collect::<Vec<Piece>>();
+        pieces.sort();
+        pieces
     }
 }
 
