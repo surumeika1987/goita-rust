@@ -49,6 +49,16 @@ impl Piece {
     }
 }
 
+impl Ord for Piece {
+    /// Compares two pieces by their point value.
+    ///
+    /// Returns the ordering of `self.point_value()` relative to
+    /// `other.point_value()`.
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.point_value().cmp(&other.point_value())
+    }
+}
+
 /// Default piece distribution used to initialize a standard Goita set.
 ///
 /// Each tuple represents `(Piece, count)`, and the total number of pieces is 32:
