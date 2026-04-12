@@ -1,4 +1,4 @@
-use goita_core::*;
+pub use goita_core::*;
 use rand;
 use rand::prelude::*;
 
