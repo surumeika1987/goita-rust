@@ -49,12 +49,21 @@ impl Piece {
     }
 }
 
+impl PartialOrd for Piece {
+    /// Compares two pieces by their point value.
+    ///
+    /// Returns `true` if `self.point_value()` is less than `other.point_value()`.
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl Ord for Piece {
     /// Compares two pieces by their point value.
     ///
     /// Returns the ordering of `self.point_value()` relative to
     /// `other.point_value()`.
-    fn cmp(&self, other: &Self) -> Ordering {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.point_value().cmp(&other.point_value())
     }
 }
