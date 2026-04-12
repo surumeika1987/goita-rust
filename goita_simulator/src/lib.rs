@@ -852,6 +852,19 @@ impl GoitaGame {
 mod tests {
     use super::*;
 
+    // 通常時のゲームの流れを通してテストする。（5し等のイベントなし)
+    // テスト項目
+    // - DealEvent::Normal の発生と、配牌内容がシード値に基づいて固定されていることの確認
+    // - ラウンド終了後にアクションを起こそうとしたときのGameNotStarted エラー
+    // - 自分のターンでないときの NotYourTurn エラー
+    // - パスできない場面でのInvalidPassエラー
+    // - 手持ちにない駒を置こうとしたときの PieceNotInHand エラー
+    // - 置くことができない駒を置こうとしたときのPlaceInvalidエラー
+    // - あがり時の倍付け処理
+    // - あがり時の得点が正しく計算されていること確認
+    // - ラウンド終了後にアクションを起こそうとしたときのRoundIsOver エラー
+    // - ゲーム終了時にアクションを起こそうとしたときのGameIsOver エラー
+    // - ゲーム終了時のスコアと勝利チームの確認
     #[test]
     fn test_normal_game_flow() {
         let mut game = GoitaGame::new_with_seed(
