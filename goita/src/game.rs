@@ -207,9 +207,21 @@ impl GoitaGame {
             .map(|round| round.player_hand(player).pieces())
     }
 
+    /// Returns the current board state for the specified player in the active round.
+    ///
+    /// If no round is currently active, this returns `None`.
     pub fn player_board(&self, player: BoardDirection) -> Option<Vec<PieceWithFacing>> {
         self.current_round
             .as_ref()
             .map(|round| round.player_board(player))
+    }
+
+    /// Returns the most recently placed piece in the current round.
+    ///
+    /// If there is no active round or no piece has been placed yet, this returns `None`.
+    pub fn last_placed_piece(&self) -> Option<PieceWithFacing> {
+        self.current_round
+            .as_ref()
+            .and_then(|round| round.last_placed_piece())
     }
 }
