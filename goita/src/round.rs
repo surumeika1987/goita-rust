@@ -405,7 +405,7 @@ impl GoitaRound {
             }
             PieceWithFacing::FaceDown(_) => {
                 if player != self.last_placed_player.unwrap_or(player) {
-                    return Err(InvalidPlaceError::FaceUpNotAllowed);
+                    return Err(InvalidPlaceError::FaceDownNotAllowed);
                 }
             }
         }
