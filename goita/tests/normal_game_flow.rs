@@ -17,7 +17,7 @@ mod common;
 // - ゲーム終了時のスコアと勝利チームの確認
 #[test]
 fn test_normal_game_flow() {
-    let mut game = GoitaGame::new_with_seed(GoitaRule::new(50), BoardDirection::North, 12345);
+    let mut game = GoitaGame::new_with_seed(GoitaRule::new(40), BoardDirection::North, 12345);
 
     // Cehck GameNotStarted error when trying to play a turn before starting a round
     let action_result = game.play_turn(
@@ -46,9 +46,11 @@ fn test_normal_game_flow() {
     assert_eq!(
         *game.player_hand(BoardDirection::North).unwrap(),
         hand! {
-            Piece::Gold => 2,
+            Piece::Bishop => 1,
+            Piece::Gold => 1,
             Piece::Silver => 1,
-            Piece::Lance => 3,
+            Piece::Knight => 1,
+            Piece::Lance => 2,
             Piece::Pawn => 2,
         }
     );
@@ -57,12 +59,10 @@ fn test_normal_game_flow() {
     assert_eq!(
         *game.player_hand(BoardDirection::East).unwrap(),
         hand! {
-            Piece::Rook   => 1,
-            Piece::Bishop => 1,
-            Piece::Silver => 1,
-            Piece::Knight => 3,
-            Piece::Lance  => 1,
-            Piece::Pawn   => 1,
+            Piece::Rook => 1,
+            Piece::Gold => 2,
+            Piece::Knight => 2,
+            Piece::Pawn => 3,
         }
     );
 
@@ -73,12 +73,11 @@ fn test_normal_game_flow() {
     assert_eq!(
         *game.player_hand(BoardDirection::South).unwrap(),
         hand! {
-            Piece::King   => 1,
-            Piece::Rook   => 1,
-            Piece::Gold   => 1,
+            Piece::King => 1,
+            Piece::Gold => 1,
             Piece::Silver => 1,
-            Piece::Knight => 1,
-            Piece::Pawn   => 3,
+            Piece::Lance => 2,
+            Piece::Pawn => 3,
         }
     );
 
@@ -86,11 +85,12 @@ fn test_normal_game_flow() {
     assert_eq!(
         *game.player_hand(BoardDirection::West).unwrap(),
         hand! {
-            Piece::King   => 1,
+            Piece::King => 1,
+            Piece::Rook => 1,
             Piece::Bishop => 1,
-            Piece::Gold   => 1,
-            Piece::Silver => 1,
-            Piece::Pawn   => 4,
+            Piece::Silver => 2,
+            Piece::Knight => 1,
+            Piece::Pawn => 2,
         }
     );
 
@@ -131,21 +131,24 @@ fn test_normal_game_flow() {
     let action_result = game.play_turn(
         BoardDirection::North,
         PlayerAction::Place {
-            top: Piece::Pawn,
-            bottom: Piece::Lance,
+            top: Piece::Lance,
+            bottom: Piece::Knight,
         },
     );
-    println!("North places Pawn-Lance on first turn: {:?}", action_result);
+    println!(
+        "North places Lance-Knight on first turn: {:?}",
+        action_result
+    );
     assert_eq!(action_result, Ok(ApplyResult::Continuing));
     println!(
-        "North's board after placing Pawn-Lance: {:?}",
+        "North's board after placing Lance-Knight: {:?}",
         game.player_board(BoardDirection::North)
     );
     assert_eq!(
         game.player_board(BoardDirection::North).unwrap(),
         vec![
-            PieceWithFacing::FaceDown(Piece::Pawn),
-            PieceWithFacing::FaceUp(Piece::Lance),
+            PieceWithFacing::FaceDown(Piece::Lance),
+            PieceWithFacing::FaceUp(Piece::Knight),
         ]
     );
 
@@ -165,7 +168,7 @@ fn test_normal_game_flow() {
     assert_eq!(
         action_result,
         Err(Error::InvalidPlace(InvalidPlaceError::PieceMismatch {
-            expected: Piece::Lance,
+            expected: Piece::Knight,
             actual: Piece::Rook
         }))
     );
@@ -174,21 +177,21 @@ fn test_normal_game_flow() {
     let action_result = game.play_turn(
         BoardDirection::East,
         PlayerAction::Place {
-            top: Piece::Lance,
-            bottom: Piece::Knight,
+            top: Piece::Knight,
+            bottom: Piece::Gold,
         },
     );
-    println!("East places Lance-Knight: {:?}", action_result);
+    println!("East places Knight-Gold: {:?}", action_result);
     assert_eq!(action_result, Ok(ApplyResult::Continuing));
     println!(
-        "East's board after placing Lance-Knight: {:?}",
+        "East's board after placing Knight-Gold: {:?}",
         game.player_board(BoardDirection::East)
     );
     assert_eq!(
         game.player_board(BoardDirection::East).unwrap(),
         vec![
-            PieceWithFacing::FaceUp(Piece::Lance),
             PieceWithFacing::FaceUp(Piece::Knight),
+            PieceWithFacing::FaceUp(Piece::Gold),
         ]
     );
 
@@ -197,7 +200,7 @@ fn test_normal_game_flow() {
     let action_result = game.play_turn(
         BoardDirection::South,
         PlayerAction::Place {
-            top: Piece::Knight,
+            top: Piece::Gold,
             bottom: Piece::King,
         },
     );
@@ -275,8 +278,8 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::North).unwrap(),
         vec![
-            PieceWithFacing::FaceDown(Piece::Pawn),
-            PieceWithFacing::FaceUp(Piece::Lance),
+            PieceWithFacing::FaceDown(Piece::Lance),
+            PieceWithFacing::FaceUp(Piece::Knight),
             PieceWithFacing::FaceUp(Piece::Pawn),
             PieceWithFacing::FaceUp(Piece::Lance),
         ]
@@ -330,25 +333,25 @@ fn test_normal_game_flow() {
     let action_result = game.play_turn(
         BoardDirection::North,
         PlayerAction::Place {
-            top: Piece::Silver,
-            bottom: Piece::Gold,
+            top: Piece::Gold,
+            bottom: Piece::Silver,
         },
     );
-    println!("North places Silver-Gold: {:?}", action_result);
+    println!("North places Gold-Silver: {:?}", action_result);
     assert_eq!(action_result, Ok(ApplyResult::Continuing));
     println!(
-        "North's board after placing Silver-Gold: {:?}",
+        "North's board after placing Gold-Silver: {:?}",
         game.player_board(BoardDirection::North),
     );
     assert_eq!(
         game.player_board(BoardDirection::North).unwrap(),
         vec![
-            PieceWithFacing::FaceDown(Piece::Pawn),
-            PieceWithFacing::FaceUp(Piece::Lance),
+            PieceWithFacing::FaceDown(Piece::Lance),
+            PieceWithFacing::FaceUp(Piece::Knight),
             PieceWithFacing::FaceUp(Piece::Pawn),
             PieceWithFacing::FaceUp(Piece::Lance),
-            PieceWithFacing::FaceDown(Piece::Silver),
-            PieceWithFacing::FaceUp(Piece::Gold),
+            PieceWithFacing::FaceDown(Piece::Gold),
+            PieceWithFacing::FaceUp(Piece::Silver),
         ]
     );
 
@@ -366,20 +369,20 @@ fn test_normal_game_flow() {
     let action_result = game.play_turn(
         BoardDirection::West,
         PlayerAction::Place {
-            top: Piece::Gold,
+            top: Piece::Silver,
             bottom: Piece::King,
         },
     );
-    println!("West places Gold-King: {:?}", action_result);
+    println!("West places Silver-King: {:?}", action_result);
     assert_eq!(action_result, Ok(ApplyResult::Continuing));
     println!(
-        "West's board after placing Gold-King: {:?}",
+        "West's board after placing Silver-King: {:?}",
         game.player_board(BoardDirection::West),
     );
     assert_eq!(
         game.player_board(BoardDirection::West).unwrap(),
         vec![
-            PieceWithFacing::FaceUp(Piece::Gold),
+            PieceWithFacing::FaceUp(Piece::Silver),
             PieceWithFacing::FaceUp(Piece::King),
         ]
     );
@@ -403,19 +406,19 @@ fn test_normal_game_flow() {
     let action_result = game.play_turn(
         BoardDirection::West,
         PlayerAction::Place {
-            top: Piece::Bishop,
-            bottom: Piece::Silver,
+            top: Piece::Silver,
+            bottom: Piece::Bishop,
         },
     );
     assert_eq!(action_result, Ok(ApplyResult::Continuing));
-    println!("West places Bishop-Silver: {:?}", action_result);
+    println!("West places Silver-Bishop: {:?}", action_result);
     assert_eq!(
         game.player_board(BoardDirection::West).unwrap(),
         vec![
-            PieceWithFacing::FaceUp(Piece::Gold),
-            PieceWithFacing::FaceUp(Piece::King),
-            PieceWithFacing::FaceDown(Piece::Bishop),
             PieceWithFacing::FaceUp(Piece::Silver),
+            PieceWithFacing::FaceUp(Piece::King),
+            PieceWithFacing::FaceDown(Piece::Silver),
+            PieceWithFacing::FaceUp(Piece::Bishop),
         ]
     );
 
@@ -438,25 +441,25 @@ fn test_normal_game_flow() {
     let action_result = game.play_turn(
         BoardDirection::West,
         PlayerAction::Place {
-            top: Piece::Pawn,
-            bottom: Piece::Pawn,
+            top: Piece::Knight,
+            bottom: Piece::Rook,
         },
     );
-    println!("West places Pawn-Pawn: {:?}", action_result);
+    println!("West places Knight-Rook: {:?}", action_result);
     assert_eq!(action_result, Ok(ApplyResult::Continuing));
     println!(
-        "West's board after placing Pawn-Pawn: {:?}",
+        "West's board after placing Knight-Rook: {:?}",
         game.player_board(BoardDirection::West)
     );
     assert_eq!(
         game.player_board(BoardDirection::West).unwrap(),
         vec![
-            PieceWithFacing::FaceUp(Piece::Gold),
-            PieceWithFacing::FaceUp(Piece::King),
-            PieceWithFacing::FaceDown(Piece::Bishop),
             PieceWithFacing::FaceUp(Piece::Silver),
-            PieceWithFacing::FaceDown(Piece::Pawn),
-            PieceWithFacing::FaceUp(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::King),
+            PieceWithFacing::FaceDown(Piece::Silver),
+            PieceWithFacing::FaceUp(Piece::Bishop),
+            PieceWithFacing::FaceDown(Piece::Knight),
+            PieceWithFacing::FaceUp(Piece::Rook),
         ]
     );
 
@@ -531,12 +534,12 @@ fn test_normal_game_flow() {
     assert_eq!(
         *game.player_hand(BoardDirection::North).unwrap(),
         hand! {
-            Piece::King   => 1,
-            Piece::Gold   => 1,
-            Piece::Silver => 1,
-            Piece::Knight => 1,
-            Piece::Lance  => 2,
-            Piece::Pawn   => 2,
+            Piece::Rook => 1,
+            Piece::Bishop => 1,
+            Piece::Gold => 1,
+            Piece::Knight => 2,
+            Piece::Lance => 1,
+            Piece::Pawn => 2,
         }
     );
 
@@ -544,11 +547,10 @@ fn test_normal_game_flow() {
     assert_eq!(
         *game.player_hand(BoardDirection::East).unwrap(),
         hand! {
-            Piece::Rook   => 1,
-            Piece::Bishop => 2,
+            Piece::Silver => 2,
             Piece::Knight => 1,
-            Piece::Lance  => 2,
-            Piece::Pawn   => 2,
+            Piece::Lance => 1,
+            Piece::Pawn => 4,
         }
     );
 
@@ -559,10 +561,12 @@ fn test_normal_game_flow() {
     assert_eq!(
         *game.player_hand(BoardDirection::South).unwrap(),
         hand! {
-            Piece::Rook   => 1,
-            Piece::Gold   => 2,
-            Piece::Silver => 2,
-            Piece::Pawn   => 3,
+            Piece::King => 2,
+            Piece::Rook => 1,
+            Piece::Gold => 1,
+            Piece::Silver => 1,
+            Piece::Lance => 2,
+            Piece::Pawn => 1,
         }
     );
 
@@ -570,11 +574,11 @@ fn test_normal_game_flow() {
     assert_eq!(
         *game.player_hand(BoardDirection::West).unwrap(),
         hand! {
-            Piece::King   => 1,
-            Piece::Gold   => 1,
+            Piece::Bishop => 1,
+            Piece::Gold => 2,
             Piece::Silver => 1,
-            Piece::Knight => 2,
-            Piece::Pawn   => 3,
+            Piece::Knight => 1,
+            Piece::Pawn => 3,
         }
     );
 
@@ -582,19 +586,73 @@ fn test_normal_game_flow() {
     let action_result = game.play_turn(
         BoardDirection::West,
         PlayerAction::Place {
-            top: Piece::Knight,
-            bottom: Piece::Pawn,
+            top: Piece::Pawn,
+            bottom: Piece::Bishop,
         },
     );
+    println!("West places Pawn-Bishop: {:?}", action_result);
     assert_eq!(action_result, Ok(ApplyResult::Continuing));
-    println!("West places Knight-Pawn: {:?}", action_result);
+    println!(
+        "West's board after placing Pawn-Bishop: {:?}",
+        game.player_board(BoardDirection::West)
+    );
     assert_eq!(
         game.player_board(BoardDirection::West).unwrap(),
         vec![
-            PieceWithFacing::FaceDown(Piece::Knight),
-            PieceWithFacing::FaceUp(Piece::Pawn),
+            PieceWithFacing::FaceDown(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Bishop),
         ]
     );
+
+    // Normal place
+    let action_result = game.play_turn(
+        BoardDirection::North,
+        PlayerAction::Place {
+            top: Piece::Bishop,
+            bottom: Piece::Gold,
+        },
+    );
+    println!("North places Lance-Gold: {:?}", action_result);
+    assert_eq!(action_result, Ok(ApplyResult::Continuing));
+    println!(
+        "North's board after placing Lance-Gold: {:?}",
+        game.player_board(BoardDirection::North)
+    );
+    assert_eq!(
+        game.player_board(BoardDirection::North).unwrap(),
+        vec![
+            PieceWithFacing::FaceUp(Piece::Bishop),
+            PieceWithFacing::FaceUp(Piece::Gold),
+        ]
+    );
+
+    common::pass_until_last_placed_player(&mut game);
+
+    // Normal place
+    let action_result = game.play_turn(
+        BoardDirection::North,
+        PlayerAction::Place {
+            top: Piece::Knight,
+            bottom: Piece::Knight,
+        },
+    );
+    println!("North places Knight-Silver: {:?}", action_result);
+    assert_eq!(action_result, Ok(ApplyResult::Continuing));
+    println!(
+        "West's board after placing Knight-Silver: {:?}",
+        game.player_board(BoardDirection::North)
+    );
+    assert_eq!(
+        game.player_board(BoardDirection::North).unwrap(),
+        vec![
+            PieceWithFacing::FaceUp(Piece::Bishop),
+            PieceWithFacing::FaceUp(Piece::Gold),
+            PieceWithFacing::FaceDown(Piece::Knight),
+            PieceWithFacing::FaceUp(Piece::Knight),
+        ]
+    );
+
+    common::pass_until_last_placed_player(&mut game);
 
     // Normal place
     let action_result = game.play_turn(
@@ -613,34 +671,12 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::North).unwrap(),
         vec![
-            PieceWithFacing::FaceUp(Piece::Pawn),
-            PieceWithFacing::FaceUp(Piece::Pawn),
-        ]
-    );
-
-    common::pass_until_last_placed_player(&mut game);
-
-    // Normal place
-    let action_result = game.play_turn(
-        BoardDirection::North,
-        PlayerAction::Place {
-            top: Piece::Knight,
-            bottom: Piece::Silver,
-        },
-    );
-    println!("North places Knight-Silver: {:?}", action_result);
-    assert_eq!(action_result, Ok(ApplyResult::Continuing));
-    println!(
-        "West's board after placing Knight-Silver: {:?}",
-        game.player_board(BoardDirection::North)
-    );
-    assert_eq!(
-        game.player_board(BoardDirection::North).unwrap(),
-        vec![
-            PieceWithFacing::FaceUp(Piece::Pawn),
-            PieceWithFacing::FaceUp(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Bishop),
+            PieceWithFacing::FaceUp(Piece::Gold),
             PieceWithFacing::FaceDown(Piece::Knight),
-            PieceWithFacing::FaceUp(Piece::Silver),
+            PieceWithFacing::FaceUp(Piece::Knight),
+            PieceWithFacing::FaceDown(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Pawn),
         ]
     );
 
@@ -651,60 +687,32 @@ fn test_normal_game_flow() {
         BoardDirection::North,
         PlayerAction::Place {
             top: Piece::Lance,
-            bottom: Piece::Lance,
+            bottom: Piece::Rook,
         },
     );
-    println!("North places Lance-Lance: {:?}", action_result);
-    assert_eq!(action_result, Ok(ApplyResult::Continuing));
-    println!(
-        "North's board after placing Lance-Lance: {:?}",
-        game.player_board(BoardDirection::North)
-    );
-    assert_eq!(
-        game.player_board(BoardDirection::North).unwrap(),
-        vec![
-            PieceWithFacing::FaceUp(Piece::Pawn),
-            PieceWithFacing::FaceUp(Piece::Pawn),
-            PieceWithFacing::FaceDown(Piece::Knight),
-            PieceWithFacing::FaceUp(Piece::Silver),
-            PieceWithFacing::FaceDown(Piece::Lance),
-            PieceWithFacing::FaceUp(Piece::Lance),
-        ]
-    );
-
-    common::pass_until_last_placed_player(&mut game);
-
-    // Normal place
-    let action_result = game.play_turn(
-        BoardDirection::North,
-        PlayerAction::Place {
-            top: Piece::Gold,
-            bottom: Piece::King,
-        },
-    );
-    println!("North places Gold-King: {:?}", action_result);
+    println!("North places Rook-Bishop: {:?}", action_result);
     assert_eq!(
         action_result,
         Ok(ApplyResult::RoundOver(RoundResult::new(
             BoardDirection::North,
-            50,
+            40,
         )))
     );
     println!(
-        "North's board after placing Gold-King: {:?}",
+        "North's board after placing Rook-Bishop: {:?}",
         game.player_board(BoardDirection::North)
     );
     assert_eq!(
         game.player_board(BoardDirection::North).unwrap(),
         vec![
-            PieceWithFacing::FaceUp(Piece::Pawn),
-            PieceWithFacing::FaceUp(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Bishop),
+            PieceWithFacing::FaceUp(Piece::Gold),
             PieceWithFacing::FaceDown(Piece::Knight),
-            PieceWithFacing::FaceUp(Piece::Silver),
+            PieceWithFacing::FaceUp(Piece::Knight),
+            PieceWithFacing::FaceDown(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Pawn),
             PieceWithFacing::FaceDown(Piece::Lance),
-            PieceWithFacing::FaceUp(Piece::Lance),
-            PieceWithFacing::FaceDown(Piece::Gold),
-            PieceWithFacing::FaceUp(Piece::King),
+            PieceWithFacing::FaceUp(Piece::Rook),
         ]
     );
 
@@ -722,5 +730,5 @@ fn test_normal_game_flow() {
         "Game result after North reaches winning score: {:?}",
         game_result
     );
-    assert_eq!(game_result, Some(GameResult::new(Team::NorthSouth, 50, 20)));
+    assert_eq!(game_result, Some(GameResult::new(Team::NorthSouth, 40, 20)));
 }
