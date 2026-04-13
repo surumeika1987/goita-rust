@@ -382,7 +382,15 @@ impl GoitaRound {
         None
     }
 
-    fn get_last_placed_piece(&self) -> Option<Piece> {
+    /// Returns the most recently placed piece on the board.
+    ///
+    /// This checks `last_place_player` and then retrieves the last piece
+    /// from that player's placed pieces on the board.
+    ///
+    /// # Returns
+    /// - `Some(Piece)` if a last placed piece exists.
+    /// - `None` if no player has placed a piece yet, or no piece is found.
+    pub fn get_last_placed_piece(&self) -> Option<Piece> {
         if let Some(last_place_player) = self.last_place_player
             && let Some(piece) = self.board.get_pieces(last_place_player).last()
         {
