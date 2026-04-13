@@ -20,7 +20,7 @@ pub struct GoitaRound {
     /// The player whose turn it is.
     current_turn_player: BoardDirection,
     /// The player who most recently placed a piece, or `None` if no piece has been placed yet.
-    last_place_player: Option<BoardDirection>,
+    last_placed_player: Option<BoardDirection>,
     /// The hands of all four players.
     hands: [Hand; 4],
     /// Indicates whether this round is over.
@@ -43,7 +43,7 @@ impl GoitaRound {
         Self {
             board: Board::new(),
             current_turn_player: init_turn_player,
-            last_place_player: None,
+            last_placed_player: None,
             hands: [Hand::new(), Hand::new(), Hand::new(), Hand::new()],
             round_is_over: false,
         }
@@ -272,8 +272,8 @@ impl GoitaRound {
             }
             match action {
                 PlayerAction::Pass => {
-                    if let Some(last_place_player) = self.last_place_player {
-                        if player == last_place_player {
+                    if let Some(last_placed_player) = self.last_placed_player {
+                        if player == last_placed_player {
                             return Err(Error::InvalidPass);
                         }
                     } else {
@@ -334,8 +334,8 @@ impl GoitaRound {
             return Err(Error::PieceNotInHand);
         }
 
-        let top_piece_with_face = if let Some(last_place_player) = self.last_place_player {
-            if player == last_place_player {
+        let top_piece_with_face = if let Some(last_placed_player) = self.last_placed_player {
+            if player == last_placed_player {
                 PieceWithFacing::FaceDowmn(top_piece)
             } else {
                 PieceWithFacing::FaceUp(top_piece)
@@ -355,7 +355,7 @@ impl GoitaRound {
         self.hands[player as usize].remove(top_piece);
         self.hands[player as usize].remove(bottom_piece);
 
-        self.last_place_player = Some(player);
+        self.last_placed_player = Some(player);
 
         Ok(())
     }
@@ -403,8 +403,8 @@ impl GoitaRound {
                     });
                 }
             }
-            PieceWithFacing::FaceDowmn(piece) => {
-                if player != self.last_place_player.unwrap_or(player) {
+            PieceWithFacing::FaceDowmn(_) => {
+                if player != self.last_placed_player.unwrap_or(player) {
                     return Err(InvalidPlaceError::FaceUpNotAllowed);
                 }
             }
@@ -434,8 +434,8 @@ impl GoitaRound {
     //
     // 条件を満たした場合は `RoundResult` を返し、未成立なら `None` を返す。
     fn check_round_over(&self) -> Option<crate::RoundResult> {
-        if let Some(last_place_player) = self.last_place_player {
-            let pieces = self.board.get_pieces(last_place_player);
+        if let Some(last_placed_player) = self.last_placed_player {
+            let pieces = self.board.get_pieces(last_placed_player);
             if pieces.len() == 8 {
                 let top_piece = pieces[6];
                 let bottom_piece = Piece::from(pieces[7]);
@@ -449,7 +449,7 @@ impl GoitaRound {
                     bottom_piece.point_value()
                 };
 
-                return Some(crate::RoundResult::new(last_place_player, score));
+                return Some(crate::RoundResult::new(last_placed_player, score));
             }
         }
 
@@ -458,15 +458,15 @@ impl GoitaRound {
 
     /// Returns the most recently placed piece on the board.
     ///
-    /// This checks `last_place_player` and then retrieves the last piece
+    /// This checks `last_placed_player` and then retrieves the last piece
     /// from that player's placed pieces on the board.
     ///
     /// # Returns
     /// - `Some(Piece)` if a last placed piece exists.
     /// - `None` if no player has placed a piece yet, or no piece is found.
     pub fn last_placed_piece(&self) -> Option<Piece> {
-        if let Some(last_place_player) = self.last_place_player
-            && let Some(piece) = self.board.get_pieces(last_place_player).last()
+        if let Some(last_placed_player) = self.last_placed_player
+            && let Some(piece) = self.board.get_pieces(last_placed_player).last()
         {
             return Some(Piece::from(*piece));
         }
@@ -504,6 +504,6 @@ impl GoitaRound {
     ///
     /// If no piece has been placed yet in the current round, this returns `None`.
     pub fn last_placed_player(&self) -> Option<BoardDirection> {
-        return self.last_place_player;
+        return self.last_placed_player;
     }
 }
