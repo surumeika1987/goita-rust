@@ -84,7 +84,8 @@ impl GoitaGame {
             return Err(Error::GameIsOver);
         }
         let mut round = GoitaRound::new(self.round_start_player);
-        let deal_event = round.shuffle_and_deal_hands(&mut self.rng);
+        let seed: u64 = self.rng.random();
+        let deal_event = round.shuffle_and_deal_hands(seed);
         match deal_event {
             DealEvent::FivePawnSameTeam { team } => match team {
                 Team::NorthSouth => self.ns_score = self.game_rule.winning_score(),

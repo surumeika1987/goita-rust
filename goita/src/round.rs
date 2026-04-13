@@ -49,24 +49,22 @@ impl GoitaRound {
         }
     }
 
-    /// Shuffles the full piece set and deals hands to all four players.
+    /// Shuffles the default piece pool deterministically using the given `seed`,
+    /// splits the shuffled pieces into 8-piece hands, and deals them to players.
     ///
-    /// This method expands `DEFAULT_PIECES` into a full deck, shuffles it with the
-    /// provided random number generator, splits it into 4 hands of 8 pieces, and
-    /// delegates validation/state update to `deal_hands`.
-    ///
-    /// # Arguments
-    /// * `rng` - Random number generator used to shuffle the expanded deck.
+    /// # Parameters
+    /// - `seed`: A deterministic seed used to initialize the RNG for reproducible shuffling.
     ///
     /// # Returns
-    /// Returns the resulting `DealEvent` after dealing and validating hands.
-    pub fn shuffle_and_deal_hands(&mut self, rng: &mut rand::rngs::StdRng) -> DealEvent {
+    /// A [`DealEvent`] produced by dealing the generated hands.
+    pub fn shuffle_and_deal_hands(&mut self, seed: u64) -> DealEvent {
+        let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(seed);
         let mut expanded: Vec<Piece> = DEFAULT_PIECES
             .iter()
             .flat_map(|(piece, count)| std::iter::repeat_n(*piece, *count as usize))
             .collect();
 
-        expanded.shuffle(rng);
+        expanded.shuffle(&mut rng);
 
         let hands = expanded
             .chunks(8)
