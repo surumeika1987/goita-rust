@@ -175,7 +175,7 @@ impl GoitaRound {
 
         let event_player = pawn_count.iter().find(|(_, count)| *count == 7);
         if let Some((player, _)) = event_player {
-            let pieces = self.hands[*player as usize].pieces();
+            let pieces = self.hands[usize::from(*player)].pieces();
             // 必ず１枚の駒が残るためunwrapしても安全
             let remain_piece = pieces.iter().find(|p| **p != Piece::Pawn).unwrap();
             return DealEvent::HandRank {
@@ -188,7 +188,7 @@ impl GoitaRound {
 
         let event_player = pawn_count.iter().find(|(_, count)| *count == 6);
         if let Some((player, _)) = event_player {
-            let pieces = self.hands[*player as usize].pieces();
+            let pieces = self.hands[usize::from(*player)].pieces();
             let mut remain_pieces = pieces
                 .iter()
                 .filter(|p| **p != Piece::Pawn)
@@ -238,7 +238,7 @@ impl GoitaRound {
 
     /// Returns a shared reference to the specified player's hand.
     pub fn player_hand(&self, player: BoardDirection) -> &Hand {
-        &self.hands[player as usize]
+        &self.hands[usize::from(player)]
     }
 
     /// Returns a vector of the pieces currently placed on the board for the specified player.
@@ -324,7 +324,7 @@ impl GoitaRound {
         top_piece: Piece,
         bottom_piece: Piece,
     ) -> Result<(), Error> {
-        let hand = &self.hands[player as usize];
+        let hand = &self.hands[usize::from(player)];
 
         if top_piece == bottom_piece {
             if hand.count(top_piece) < 2 {
@@ -352,8 +352,8 @@ impl GoitaRound {
         self.board
             .place_pieces(player, top_piece_with_face, bottom_piece);
         // 関数の最初で手札の形状を検査しているため、必ず手札にtop_pieceとbottom_pieceが存在することが保証されている
-        self.hands[player as usize].remove(top_piece);
-        self.hands[player as usize].remove(bottom_piece);
+        self.hands[usize::from(player)].remove(top_piece);
+        self.hands[usize::from(player)].remove(bottom_piece);
 
         self.last_placed_player = Some(player);
 
@@ -480,7 +480,7 @@ impl GoitaRound {
     // 3. 場全体で表向きの王がちょうど1枚ある
     // いずれかを満たせば配置可能
     fn can_place_king(&self, player: BoardDirection) -> bool {
-        if self.hands[player as usize].count(Piece::King) == 2 {
+        if self.hands[usize::from(player)].count(Piece::King) == 2 {
             return true;
         }
         if self.board.get_pieces(player).len() == 6 {
