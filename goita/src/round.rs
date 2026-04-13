@@ -73,6 +73,7 @@ impl GoitaRound {
             .map(|chunk| chunk.to_vec())
             .collect::<Vec<Vec<Piece>>>();
 
+        // 必ずpanicしないことが保証されているため、unwrapしても安全
         self.deal_hands(hands).unwrap()
     }
 
@@ -113,8 +114,7 @@ impl GoitaRound {
                     map
                 });
 
-        for key in original_count_map.keys() {
-            let original_count = original_count_map.get(key).unwrap();
+        for (key, original_count) in original_count_map.iter() {
             let count = count_map.get(key).unwrap_or(&0);
 
             if original_count != count {
@@ -122,6 +122,7 @@ impl GoitaRound {
             }
         }
 
+        // この関数の最初ですでにhandの形状を検査しているため、unwrapしても安全
         self.hands = hands
             .iter()
             .map(|hand| Hand::from(hand.clone()))
@@ -167,6 +168,7 @@ impl GoitaRound {
         let event_player = pawn_count.iter().find(|(_, count)| *count == 7);
         if let Some((player, _)) = event_player {
             let pieces = self.hands[*player as usize].pieces();
+            // 必ず１枚の駒が残るためunwrapしても安全
             let remain_piece = pieces.iter().find(|p| **p != Piece::Pawn).unwrap();
             return DealEvent::HandRank {
                 player: *player,
@@ -184,20 +186,21 @@ impl GoitaRound {
                 .filter(|p| **p != Piece::Pawn)
                 .cloned()
                 .collect::<Vec<Piece>>();
+            // 必ず2枚の駒が残るためunwrapしても安全
             let first_piece = remain_pieces.pop().unwrap();
-            let secound_piece = remain_pieces.pop().unwrap();
+            let second_piece = remain_pieces.pop().unwrap();
 
-            let double_up = first_piece == secound_piece;
+            let double_up = first_piece == second_piece;
 
             return DealEvent::HandRank {
                 player: *player,
                 rank: HandRank::SixPawn {
                     score: if double_up {
                         first_piece.point_value() * 2
-                    } else if first_piece.point_value() > secound_piece.point_value() {
+                    } else if first_piece.point_value() > second_piece.point_value() {
                         first_piece.point_value()
                     } else {
-                        secound_piece.point_value()
+                        second_piece.point_value()
                     },
                 },
             };
