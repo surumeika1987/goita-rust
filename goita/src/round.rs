@@ -141,6 +141,14 @@ impl GoitaRound {
         Ok(deal_event)
     }
 
+    /// 配牌時の役（DealEvent）を判定する。
+    ///
+    /// 判定順は「歩8枚 → 歩7枚 → 歩6枚」。
+    /// - 歩8枚: `EightPawn`
+    /// - 歩7枚: 歩以外の1枚の点数を2倍して `SevenPawn`
+    /// - 歩6枚: 残り2枚が同種ならその点数を2倍、異種なら高い方の点数で `SixPawn`
+    ///
+    /// いずれにも該当しない場合は、通常の配牌結果（役なし）を返す。
     fn check_deal_event(&self) -> DealEvent {
         const DIRECTIONS: [BoardDirection; 4] = [
             BoardDirection::North,
@@ -233,6 +241,7 @@ impl GoitaRound {
         &self.hands[player as usize]
     }
 
+    /// Returns a vector of the pieces currently placed on the board for the specified player.
     pub fn player_board(&self, player: BoardDirection) -> Vec<PieceWithFacing> {
         self.board.get_pieces(player)
     }
@@ -290,6 +299,25 @@ impl GoitaRound {
         }
     }
 
+    // プレイヤーが2枚の駒（上段・下段）を場に配置する。
+    //
+    // 処理内容:
+    // - 指定した2枚が手札に存在するかを検証する
+    //   - 同一駒2枚なら2枚所持が必要
+    //   - 別駒なら両方を1枚以上所持している必要がある
+    // - 上段駒の向きを決定する
+    //   - 同一プレイヤーの連続配置、または初回配置は伏せ駒
+    //   - それ以外は表駒
+    // - 上段が表駒の場合、直前の場札との整合性を検証する
+    //   - 王は特殊制約（直前が王・香・歩なら不可）
+    //   - 王以外は直前の駒と同種である必要がある
+    // - 下段が王の場合、王配置可能条件 (`can_place_king`) を満たしているか確認する
+    // - 盤面へ配置し、手札から2枚を除去し、最終配置プレイヤーを更新する
+    //
+    // # Errors
+    // - `Error::PieceNotInHand`: 必要な駒が手札にない場合
+    // - `Error::InvalidPlace(InvalidPlaceError::PieceMismatch)`: 表駒の一致条件に違反した場合
+    // - `Error::InvalidPlace(InvalidPlaceError::InvalidKingPlacement)`: 王配置条件を満たさない場合
     fn place_pieces(
         &mut self,
         player: BoardDirection,
@@ -355,10 +383,22 @@ impl GoitaRound {
         Ok(())
     }
 
+    // 次のターンに移行する。現在のターンプレイヤーを更新する。
     fn next_turn(&mut self) {
         self.current_turn_player = self.current_turn_player.next();
     }
 
+    // ラウンド終了条件を判定し、成立していれば結果を返す。
+    //
+    // 判定内容:
+    // - 直前に駒を置いたプレイヤーが存在すること
+    // - そのプレイヤーの場札が8枚そろっていること
+    //
+    // 得点計算:
+    // - 下段の駒の点数を基本得点とする
+    // - ただし、上段が「同じ駒の伏せ駒（ダブル）」なら得点を2倍にする
+    //
+    // 条件を満たした場合は `RoundResult` を返し、未成立なら `None` を返す。
     fn check_round_over(&self) -> Option<crate::RoundResult> {
         if let Some(last_place_player) = self.last_place_player {
             let pieces = self.board.get_pieces(last_place_player);
@@ -400,6 +440,11 @@ impl GoitaRound {
         None
     }
 
+    // 王を出せる条件:
+    // 1. 自分の手札に王が2枚ある
+    // 2. 自分の場札がすでに6枚ある
+    // 3. 場全体で表向きの王がちょうど1枚ある
+    // いずれかを満たせば配置可能
     fn can_place_king(&self, player: BoardDirection) -> bool {
         if self.hands[player as usize].count(Piece::King) == 2 {
             return true;
