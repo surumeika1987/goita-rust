@@ -104,7 +104,7 @@ pub enum PieceWithFacing {
     /// The piece is face-up and it content is visible to all players.
     FaceUp(Piece),
     /// The piece is face-down and its content is hidden from all players.
-    FaceDowmn(Piece),
+    FaceDown(Piece),
 }
 
 impl From<PieceWithFacing> for Piece {
@@ -112,7 +112,7 @@ impl From<PieceWithFacing> for Piece {
     /// ignoring whether it is facing up or down.
     fn from(pwf: PieceWithFacing) -> Self {
         match pwf {
-            PieceWithFacing::FaceUp(p) | PieceWithFacing::FaceDowmn(p) => p,
+            PieceWithFacing::FaceUp(p) | PieceWithFacing::FaceDown(p) => p,
         }
     }
 }

@@ -56,7 +56,7 @@ fn board_facing_and_team_mapping_work_together() {
     let mut board = Board::new();
     board.place_pieces(
         BoardDirection::North,
-        PieceWithFacing::FaceDowmn(Piece::Pawn),
+        PieceWithFacing::FaceDown(Piece::Pawn),
         Piece::Gold,
     );
     board.place_pieces(
@@ -69,7 +69,7 @@ fn board_facing_and_team_mapping_work_together() {
     assert_eq!(
         north,
         vec![
-            PieceWithFacing::FaceDowmn(Piece::Pawn),
+            PieceWithFacing::FaceDown(Piece::Pawn),
             PieceWithFacing::FaceUp(Piece::Gold)
         ]
     );
@@ -110,7 +110,7 @@ fn player_action_can_update_hand_and_board() {
         PlayerAction::Place { top, bottom } => {
             hand.remove(top);
             hand.remove(bottom);
-            board.place_pieces(BoardDirection::North, PieceWithFacing::FaceDowmn(top), bottom);
+            board.place_pieces(BoardDirection::North, PieceWithFacing::FaceDown(top), bottom);
         }
     }
 
@@ -118,7 +118,7 @@ fn player_action_can_update_hand_and_board() {
     assert_eq!(
         board.get_pieces(BoardDirection::North),
         vec![
-            PieceWithFacing::FaceDowmn(Piece::Pawn),
+            PieceWithFacing::FaceDown(Piece::Pawn),
             PieceWithFacing::FaceUp(Piece::Gold)
         ]
     );

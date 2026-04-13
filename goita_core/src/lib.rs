@@ -60,13 +60,13 @@
 //! let mut board = Board::new();
 //! board.place_pieces(
 //!     BoardDirection::North,
-//!     PieceWithFacing::FaceDowmn(Piece::Pawn),
+//!     PieceWithFacing::FaceDown(Piece::Pawn),
 //!     Piece::Gold,
 //! );
 //!
 //! let north = board.get_pieces(BoardDirection::North);
 //! assert_eq!(north.len(), 2);
-//! assert_eq!(north[0], PieceWithFacing::FaceDowmn(Piece::Pawn));
+//! assert_eq!(north[0], PieceWithFacing::FaceDown(Piece::Pawn));
 //! assert_eq!(north[1], PieceWithFacing::FaceUp(Piece::Gold));
 //! ```
 //!

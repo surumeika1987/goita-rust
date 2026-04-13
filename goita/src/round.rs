@@ -336,12 +336,12 @@ impl GoitaRound {
 
         let top_piece_with_face = if let Some(last_placed_player) = self.last_placed_player {
             if player == last_placed_player {
-                PieceWithFacing::FaceDowmn(top_piece)
+                PieceWithFacing::FaceDown(top_piece)
             } else {
                 PieceWithFacing::FaceUp(top_piece)
             }
         } else {
-            PieceWithFacing::FaceDowmn(top_piece)
+            PieceWithFacing::FaceDown(top_piece)
         };
 
         if let Err(error) = self.check_place_pieces(player, top_piece_with_face, bottom_piece) {
@@ -403,7 +403,7 @@ impl GoitaRound {
                     });
                 }
             }
-            PieceWithFacing::FaceDowmn(_) => {
+            PieceWithFacing::FaceDown(_) => {
                 if player != self.last_placed_player.unwrap_or(player) {
                     return Err(InvalidPlaceError::FaceUpNotAllowed);
                 }
@@ -441,7 +441,7 @@ impl GoitaRound {
                 let bottom_piece = Piece::from(pieces[7]);
 
                 let double_up =
-                    matches!(top_piece, PieceWithFacing::FaceDowmn(piece) if piece == bottom_piece);
+                    matches!(top_piece, PieceWithFacing::FaceDown(piece) if piece == bottom_piece);
 
                 let score = if double_up {
                     bottom_piece.point_value() * 2
