@@ -1,8 +1,18 @@
 [package]
 name = "goita"
 version = "0.1.0"
-edition = "2024"
+description = "Core game engine for Goita, including round/game state management, turn validation, scoring rules, ans special hand event handling."
+readme = "./README.md"
+
+authors.workspace = true
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[package.metadata.docs.rs]
 
 [dependencies]
-goita_core = { path = "../goita_core" }
 rand = "0.10.0"
+goita_core.workspace = true

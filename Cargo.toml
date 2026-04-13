@@ -1,7 +1,16 @@
 [workspace]
+default-members = ["goita"]
+members = ["goita_cli", "goita_core", "goita"]
+resolver = "3"
 
-members = [
-    "goita_cli",
-    "goita_core",
-    "goita"
-]
+[workspace.package]
+authors = ["surumeika1987"]
+edition = "2024"
+rust-version = "1.88.0"
+repository = "https://github.com/surumeika1987/goita-rust"
+keywords = ["goita", "game", "board game"]
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+goita_core = { path = "goita_core" }
+goita = { path = "goita" }

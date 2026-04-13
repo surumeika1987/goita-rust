@@ -1,6 +1,14 @@
 [package]
 name = "goita_core"
 version = "0.1.0"
-edition = "2024"
+description = "Foundational domain models for Goita, providing pieces, hands, board representation, player actions, and team/direction type for reusable game logic."
+readme = "./README.md"
+
+authors.workspace = true
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
 
 [dependencies]
