@@ -12,5 +12,5 @@ keywords = ["goita", "game", "board game"]
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
-goita_core = { path = "goita_core" }
-goita = { path = "goita" }
+goita_core = { path = "goita_core", version = "0.1.0" }
+goita = { path = "goita", version = "0.1.0" }
