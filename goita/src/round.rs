@@ -504,6 +504,6 @@ impl GoitaRound {
     ///
     /// If no piece has been placed yet in the current round, this returns `None`.
     pub fn last_placed_player(&self) -> Option<BoardDirection> {
-        return self.last_placed_player;
+        self.last_placed_player
     }
 }
