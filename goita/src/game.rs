@@ -219,7 +219,7 @@ impl GoitaGame {
     /// Returns the most recently placed piece in the current round.
     ///
     /// If there is no active round or no piece has been placed yet, this returns `None`.
-    pub fn last_placed_piece(&self) -> Option<PieceWithFacing> {
+    pub fn last_placed_piece(&self) -> Option<Piece> {
         self.current_round
             .as_ref()
             .and_then(|round| round.last_placed_piece())

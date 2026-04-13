@@ -26,6 +26,10 @@ pub enum Error {
 /// Errors that can occur when attempting to place a piece on the board.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InvalidPlaceError {
+    /// A face-up piece cannot be placed in this position.
+    FaceUpNotAllowed,
+    /// A face-down piece cannot be placed in this position.
+    FaceDownNotAllowed,
     /// The placed piece does not match the expected piece for the target position.
     PieceMismatch { expected: Piece, actual: Piece },
     /// A king was placed in a position where king placement is not allowed.

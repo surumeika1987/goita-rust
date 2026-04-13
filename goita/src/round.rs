@@ -324,8 +324,7 @@ impl GoitaRound {
         top_piece: Piece,
         bottom_piece: Piece,
     ) -> Result<(), Error> {
-        let player_index = player as usize;
-        let hand = &self.hands[player_index];
+        let hand = &self.hands[player as usize];
 
         if top_piece == bottom_piece {
             if hand.count(top_piece) < 2 {
@@ -345,40 +344,75 @@ impl GoitaRound {
             PieceWithFacing::FaceDowmn(top_piece)
         };
 
-        if let PieceWithFacing::FaceUp(piece) = top_piece_with_face {
-            // FaceUpの場合は必ずlast_placed_pieceが存在するためunwrapしても安全
-            let last_placed_piece = self.get_last_placed_piece().unwrap();
-
-            if piece == Piece::King {
-                match last_placed_piece {
-                    Piece::King | Piece::Lance | Piece::Pawn => {
-                        return Err(Error::InvalidPlace(InvalidPlaceError::PieceMismatch {
-                            expected: last_placed_piece,
-                            actual: piece,
-                        }));
-                    }
-                    _ => {}
-                }
-            } else if piece != last_placed_piece {
-                return Err(Error::InvalidPlace(InvalidPlaceError::PieceMismatch {
-                    expected: last_placed_piece,
-                    actual: piece,
-                }));
-            }
-        }
-
-        if bottom_piece == Piece::King && !self.can_place_king(player) {
-            return Err(Error::InvalidPlace(InvalidPlaceError::InvalidKingPlacement));
+        if let Err(error) = self.check_place_pieces(player, top_piece_with_face, bottom_piece) {
+            return Err(Error::InvalidPlace(error));
         }
 
         // 手札は8枚なので8枚以上置くことはないため、必ずpanicしないことが保証されている
         self.board
             .place_pieces(player, top_piece_with_face, bottom_piece);
         // 関数の最初で手札の形状を検査しているため、必ず手札にtop_pieceとbottom_pieceが存在することが保証されている
-        self.hands[player_index].remove(top_piece);
-        self.hands[player_index].remove(bottom_piece);
+        self.hands[player as usize].remove(top_piece);
+        self.hands[player as usize].remove(bottom_piece);
 
         self.last_place_player = Some(player);
+
+        Ok(())
+    }
+
+    /// Validates whether a player can place the given pair of pieces in the current round state.
+    ///
+    /// Rules:
+    /// - If the top piece is face-up:
+    ///   - A previous placed piece must exist; otherwise placement is rejected.
+    ///   - The face-up piece must match the last placed piece, except for the special King rule.
+    ///   - If the face-up piece is `King`, it is rejected when the last placed piece is
+    ///     `King`, `Lance`, or `Pawn`; otherwise it is allowed.
+    /// - If the top piece is face-down:
+    ///   - The acting player must be the same as the last player who placed.
+    /// - If the bottom piece is `King`:
+    ///   - Placement is allowed only when `can_place_king(player)` returns true.
+    ///
+    /// Returns `Ok(())` when placement is valid; otherwise returns `InvalidPlaceError`.
+    pub fn check_place_pieces(
+        &self,
+        player: BoardDirection,
+        top_piece_with_face: PieceWithFacing,
+        bottom_piece: Piece,
+    ) -> Result<(), InvalidPlaceError> {
+        match top_piece_with_face {
+            PieceWithFacing::FaceUp(piece) => {
+                let Some(last_placed_piece) = self.last_placed_piece() else {
+                    return Err(InvalidPlaceError::FaceUpNotAllowed);
+                };
+
+                if piece == Piece::King {
+                    match last_placed_piece {
+                        Piece::King | Piece::Lance | Piece::Pawn => {
+                            return Err(InvalidPlaceError::PieceMismatch {
+                                expected: last_placed_piece,
+                                actual: piece,
+                            });
+                        }
+                        _ => {}
+                    }
+                } else if piece != last_placed_piece {
+                    return Err(InvalidPlaceError::PieceMismatch {
+                        expected: last_placed_piece,
+                        actual: piece,
+                    });
+                }
+            }
+            PieceWithFacing::FaceDowmn(piece) => {
+                if player != self.last_place_player.unwrap_or(player) {
+                    return Err(InvalidPlaceError::FaceUpNotAllowed);
+                }
+            }
+        }
+
+        if bottom_piece == Piece::King && !self.can_place_king(player) {
+            return Err(InvalidPlaceError::InvalidKingPlacement);
+        }
 
         Ok(())
     }
@@ -430,7 +464,7 @@ impl GoitaRound {
     /// # Returns
     /// - `Some(Piece)` if a last placed piece exists.
     /// - `None` if no player has placed a piece yet, or no piece is found.
-    pub fn get_last_placed_piece(&self) -> Option<Piece> {
+    pub fn last_placed_piece(&self) -> Option<Piece> {
         if let Some(last_place_player) = self.last_place_player
             && let Some(piece) = self.board.get_pieces(last_place_player).last()
         {
@@ -464,5 +498,12 @@ impl GoitaRound {
         }
 
         false
+    }
+
+    /// Returns the direction of the player who most recently placed a piece.
+    ///
+    /// If no piece has been placed yet in the current round, this returns `None`.
+    pub fn last_placed_player(&self) -> Option<BoardDirection> {
+        return self.last_place_player;
     }
 }
