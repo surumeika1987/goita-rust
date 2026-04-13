@@ -335,12 +335,11 @@ impl GoitaRound {
             return Err(Error::InvalidPlace);
         }
 
-        if !self
-            .board
-            .place_pieces(player, top_piece_with_face, bottom_piece)
-        {
+        if self.board.get_pieces(player).len() + 2 > 8 {
             return Err(Error::InvalidPlace);
         }
+        self.board
+            .place_pieces(player, top_piece_with_face, bottom_piece);
 
         self.hands[player_index].remove(top_piece);
         self.hands[player_index].remove(bottom_piece);

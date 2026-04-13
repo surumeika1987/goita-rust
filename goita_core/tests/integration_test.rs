@@ -54,16 +54,16 @@ fn board_facing_and_team_mapping_work_together() {
 
     // 盤面へ配置した駒が向き付きで取得できることを確認する。
     let mut board = Board::new();
-    assert!(board.place_pieces(
+    board.place_pieces(
         BoardDirection::North,
         PieceWithFacing::Down(Piece::Pawn),
-        Piece::Gold
-    ));
-    assert!(board.place_pieces(
+        Piece::Gold,
+    );
+    board.place_pieces(
         BoardDirection::East,
         PieceWithFacing::Up(Piece::King),
-        Piece::Pawn
-    ));
+        Piece::Pawn,
+    );
 
     let north = board.get_pieces(BoardDirection::North);
     assert_eq!(
@@ -110,11 +110,7 @@ fn player_action_can_update_hand_and_board() {
         PlayerAction::Place { top, bottom } => {
             hand.remove(top);
             hand.remove(bottom);
-            assert!(board.place_pieces(
-                BoardDirection::North,
-                PieceWithFacing::Down(top),
-                bottom
-            ));
+            board.place_pieces(BoardDirection::North, PieceWithFacing::Down(top), bottom);
         }
     }
 

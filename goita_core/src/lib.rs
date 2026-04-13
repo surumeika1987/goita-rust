@@ -58,12 +58,11 @@
 //! use goita_core::{Board, BoardDirection, Piece, PieceWithFacing};
 //!
 //! let mut board = Board::new();
-//! let ok = board.place_pieces(
+//! board.place_pieces(
 //!     BoardDirection::North,
 //!     PieceWithFacing::Down(Piece::Pawn),
 //!     Piece::Gold,
 //! );
-//! assert!(ok);
 //!
 //! let north = board.get_pieces(BoardDirection::North);
 //! assert_eq!(north.len(), 2);

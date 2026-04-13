@@ -168,22 +168,36 @@ impl Board {
             .collect()
     }
 
-    /// Places two pieces on the board for a given player (direction). Each player can place up to 8
-    /// pieces on the board. This method returns `true` if the pieces were successfully placed, or
-    /// `false` if the player already has 8 pieces on the board and cannot place more.
+    /// Places two pieces on the board for the specified direction.
+    ///
+    /// The `top_piece` is pushed first, then `bottom_piece` is converted to
+    /// an upward-facing piece and pushed second.
+    ///
+    /// # Panics
+    ///
+    /// Panics if adding these two pieces would exceed the maximum of 8 pieces
+    /// allowed for the given direction.
+    ///
+    /// # Parameters
+    ///
+    /// - `direction`: The board direction where the pieces are placed.
+    /// - `top_piece`: The piece to place on top.
+    /// - `bottom_piece`: The piece to place on the bottom (stored as `Up` facing).
     pub fn place_pieces(
         &mut self,
         direction: BoardDirection,
         top_piece: PieceWithFacing,
         bottom_piece: Piece,
-    ) -> bool {
+    ) {
         let list = self.pieces.entry(direction).or_default();
-        if list.len() >= 8 {
-            return false;
+        if list.len() + 2 > 8 {
+            panic!(
+                "Cannot place pieces for {:?}: would exceed maximum of 8 pieces on the board",
+                direction
+            );
         }
         list.push(top_piece);
         list.push(PieceWithFacing::Up(bottom_piece));
-        true
     }
 }
 
