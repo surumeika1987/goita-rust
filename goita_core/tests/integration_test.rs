@@ -123,3 +123,21 @@ fn player_action_can_update_hand_and_board() {
         ]
     );
 }
+
+#[test]
+#[should_panic]
+fn panics_when_add_piece_to_hand_exceeds_eight() {
+    let _ = hand! {
+        Piece::Pawn => 9,
+    };
+}
+
+#[test]
+#[should_panic]
+fn panics_when_remove_piece_not_in_hand() {
+    let mut hand = hand! {
+        Piece::Pawn => 1,
+    };
+    hand.remove(Piece::Pawn);
+    hand.remove(Piece::Pawn);
+}
