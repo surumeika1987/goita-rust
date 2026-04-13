@@ -162,7 +162,13 @@ fn test_normal_game_flow() {
         "East tries to place Rook-Pawn (top piece different from last placed Pawn and face-up): {:?}",
         action_result
     );
-    assert_eq!(action_result, Err(Error::InvalidPlace));
+    assert_eq!(
+        action_result,
+        Err(Error::InvalidPlace(InvalidPlaceError::PieceMismatch {
+            expected: Piece::Lance,
+            actual: Piece::Rook
+        }))
+    );
 
     // Check Normal Place
     let action_result = game.play_turn(
@@ -196,10 +202,13 @@ fn test_normal_game_flow() {
         },
     );
     println!(
-        "South tries to place King-King (only has 1 King in hand and no existing King on board): {:?}",
+        "Sourh tries to place Knight-King (try to place King when not having 2 kings in hand and no existing king on board): {:?}",
         action_result
     );
-    assert_eq!(action_result, Err(Error::InvalidPlace));
+    assert_eq!(
+        action_result,
+        Err(Error::InvalidPlace(InvalidPlaceError::InvalidKingPlacement))
+    );
 
     // Normal place(Use King)
     let action_result = game.play_turn(
@@ -236,7 +245,13 @@ fn test_normal_game_flow() {
         "West tries to place King-Pawn (top piece is King and last placed piece is Pawn): {:?}",
         action_result
     );
-    assert_eq!(action_result, Err(Error::InvalidPlace));
+    assert_eq!(
+        action_result,
+        Err(Error::InvalidPlace(InvalidPlaceError::PieceMismatch {
+            expected: Piece::Pawn,
+            actual: Piece::King
+        }))
+    );
 
     // Normal pass
     let action_result = game.play_turn(BoardDirection::West, PlayerAction::Pass);
@@ -290,7 +305,13 @@ fn test_normal_game_flow() {
         "West tries to place King-Pawn (top piece is King and last placed piece is Lance): {:?}",
         action_result
     );
-    assert_eq!(action_result, Err(Error::InvalidPlace));
+    assert_eq!(
+        action_result,
+        Err(Error::InvalidPlace(InvalidPlaceError::PieceMismatch {
+            expected: Piece::Lance,
+            actual: Piece::King
+        }))
+    );
 
     // Normal pass
     let action_result = game.play_turn(BoardDirection::West, PlayerAction::Pass);

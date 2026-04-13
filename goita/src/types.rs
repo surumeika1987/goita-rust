@@ -1,4 +1,4 @@
-use goita_core::{BoardDirection, Team};
+use goita_core::{BoardDirection, Piece, Team};
 
 /// Errors that can occur while processing a game action.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -13,15 +13,23 @@ pub enum Error {
     /// The specified piece is not available in the player's hand.
     PieceNotInHand,
     /// The piece placement is not valid under the game rules.
-    // TODO: Add reason details (e.g. "top piece cannot be placed face-up", "king cannot be placed
     // on bottom if certain conditions are not met", etc.)
-    InvalidPlace,
+    InvalidPlace(InvalidPlaceError),
     /// The pass action is not valid in the current game state.
     InvalidPass,
     /// The round has already ended, so no further actions are allowed.
     RoundIsOver,
     /// The game has already ended, so no further actions and start new rounds are allowed.
     GameIsOver,
+}
+
+/// Errors that can occur when attempting to place a piece on the board.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum InvalidPlaceError {
+    /// The placed piece does not match the expected piece for the target position.
+    PieceMismatch { expected: Piece, actual: Piece },
+    /// A king was placed in a position where king placement is not allowed.
+    InvalidKingPlacement,
 }
 
 /// Represents a special hand rank that is checked immediately after dealing.

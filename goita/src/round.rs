@@ -1,4 +1,4 @@
-use crate::{ApplyResult, DealEvent, Error, HandRank};
+use crate::{ApplyResult, DealEvent, Error, HandRank, types::InvalidPlaceError};
 use goita_core::{
     Board, BoardDirection, DEFAULT_PIECES, Hand, Piece, PieceWithFacing, PlayerAction, Team,
 };
@@ -318,32 +318,35 @@ impl GoitaRound {
         };
 
         if let PieceWithFacing::FaceUp(piece) = top_piece_with_face {
-            let Some(last_placed_piece) = self.get_last_placed_piece() else {
-                return Err(Error::InvalidPlace);
-            };
+            // FaceUpの場合は必ずlast_placed_pieceが存在するためunwrapしても安全
+            let last_placed_piece = self.get_last_placed_piece().unwrap();
 
             if piece == Piece::King {
                 match last_placed_piece {
                     Piece::King | Piece::Lance | Piece::Pawn => {
-                        return Err(Error::InvalidPlace);
+                        return Err(Error::InvalidPlace(InvalidPlaceError::PieceMismatch {
+                            expected: last_placed_piece,
+                            actual: piece,
+                        }));
                     }
                     _ => {}
                 }
             } else if piece != last_placed_piece {
-                return Err(Error::InvalidPlace);
+                return Err(Error::InvalidPlace(InvalidPlaceError::PieceMismatch {
+                    expected: last_placed_piece,
+                    actual: piece,
+                }));
             }
         }
 
         if bottom_piece == Piece::King && !self.can_place_king(player) {
-            return Err(Error::InvalidPlace);
+            return Err(Error::InvalidPlace(InvalidPlaceError::InvalidKingPlacement));
         }
 
-        if self.board.get_pieces(player).len() + 2 > 8 {
-            return Err(Error::InvalidPlace);
-        }
+        // 手札は8枚なので8枚以上置くことはないため、必ずpanicしないことが保証されている
         self.board
             .place_pieces(player, top_piece_with_face, bottom_piece);
-
+        // 関数の最初で手札の形状を検査しているため、必ず手札にtop_pieceとbottom_pieceが存在することが保証されている
         self.hands[player_index].remove(top_piece);
         self.hands[player_index].remove(bottom_piece);
 
