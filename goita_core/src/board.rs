@@ -43,16 +43,13 @@ impl From<u8> for BoardDirection {
     /// - `1` => [`BoardDirection::East`]
     /// - `2` => [`BoardDirection::South`]
     /// - `3` => [`BoardDirection::West`]
-    ///
-    /// # Panics
-    /// Panics if an unexpected remainder is produced (defensive fallback case).
     fn from(value: u8) -> Self {
         match value % 4 {
             0 => BoardDirection::North,
             1 => BoardDirection::East,
             2 => BoardDirection::South,
             3 => BoardDirection::West,
-            _ => panic!("Invalid value for BoardDirection: {}", value),
+            _ => unreachable!(),
         }
     }
 }
