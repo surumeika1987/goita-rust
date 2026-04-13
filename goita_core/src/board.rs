@@ -132,10 +132,6 @@ pub struct Board {
     // The `HashMap` allows us to easily look up the pieces for each player and manage the state of
     // the board.
     pieces: HashMap<BoardDirection, Vec<PieceWithFacing>>,
-    // The last player who placed pieces on the board. This can be used to determine turn order and
-    // enforce game rules related to piece placement. It is `None` if no pieces have been placed
-    // yet.
-    last_placed_player: Option<BoardDirection>,
 }
 
 impl Board {
@@ -143,7 +139,6 @@ impl Board {
     pub fn new() -> Self {
         Self {
             pieces: HashMap::new(),
-            last_placed_player: None,
         }
     }
 
