@@ -63,7 +63,7 @@ impl GoitaRound {
     pub fn shuffle_and_deal_hands(&mut self, rng: &mut rand::rngs::StdRng) -> DealEvent {
         let mut expanded: Vec<Piece> = DEFAULT_PIECES
             .iter()
-            .flat_map(|(piece, count)| std::iter::repeat(*piece).take(*count as usize))
+            .flat_map(|(piece, count)| std::iter::repeat_n(*piece, *count as usize))
             .collect();
 
         expanded.shuffle(rng);
@@ -71,9 +71,7 @@ impl GoitaRound {
         let hands = expanded
             .chunks(8)
             .map(|chunk| chunk.to_vec())
-            .collect::<Vec<Vec<Piece>>>()
-            .try_into()
-            .unwrap();
+            .collect::<Vec<Vec<Piece>>>();
 
         self.deal_hands(hands).unwrap()
     }
@@ -344,8 +342,8 @@ impl GoitaRound {
             return Err(Error::InvalidPlace);
         }
 
-        let _ = self.hands[player_index].remove(top_piece);
-        let _ = self.hands[player_index].remove(bottom_piece);
+        self.hands[player_index].remove(top_piece);
+        self.hands[player_index].remove(bottom_piece);
 
         self.last_place_player = Some(player);
 
@@ -380,10 +378,10 @@ impl GoitaRound {
     }
 
     fn get_last_placed_piece(&self) -> Option<Piece> {
-        if let Some(last_place_player) = self.last_place_player {
-            if let Some(piece) = self.board.get_pieces(last_place_player).last() {
-                return Some(Piece::from(*piece));
-            }
+        if let Some(last_place_player) = self.last_place_player
+            && let Some(piece) = self.board.get_pieces(last_place_player).last()
+        {
+            return Some(Piece::from(*piece));
         }
 
         None

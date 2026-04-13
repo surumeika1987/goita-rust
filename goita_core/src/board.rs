@@ -177,7 +177,7 @@ impl Board {
         top_piece: PieceWithFacing,
         bottom_piece: Piece,
     ) -> bool {
-        let list = self.pieces.entry(direction).or_insert_with(Vec::new);
+        let list = self.pieces.entry(direction).or_default();
         if list.len() >= 8 {
             return false;
         }

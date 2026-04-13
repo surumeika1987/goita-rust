@@ -125,7 +125,7 @@ impl Hand {
             .piece_counts
             .iter()
             .filter(|&(_, &c)| c > 0)
-            .flat_map(|(&piece, &count)| std::iter::repeat(piece).take(count as usize))
+            .flat_map(|(&piece, &count)| std::iter::repeat_n(piece, count as usize))
             .collect::<Vec<Piece>>();
         pieces.sort();
         pieces

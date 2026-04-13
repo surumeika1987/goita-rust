@@ -116,8 +116,7 @@ impl GoitaGame {
     ///
     /// Returns:
     /// - `Error::GameNotStarted` if there is no active round,
-    /// - `Error::NotYourTurn` if the action is attempted by a player who is not the current turn
-    /// player,
+    /// - `Error::NotYourTurn` if the action is attempted by a player who is not the current turn player,
     /// - `Error::PieceNotInHand` if the player tries to place a piece they do not have,
     /// - `Error::InvalidPlace` if the piece placement violates game rules,
     /// - `Error::InvalidPass` if the pass action is not valid in the current game state,

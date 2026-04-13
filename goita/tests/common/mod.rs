@@ -16,6 +16,7 @@ macro_rules! hand {
 }
 
 // 最後に駒をおいたプレイヤーまでパスするヘルパー関数
+#[allow(dead_code)]
 pub fn pass_until_last_placed_player(game: &mut GoitaGame) {
     for _ in 0..3 {
         // Normal pass
