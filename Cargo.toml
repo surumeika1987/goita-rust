@@ -8,7 +8,7 @@ authors = ["surumeika1987"]
 edition = "2024"
 rust-version = "1.88.0"
 repository = "https://github.com/surumeika1987/goita-rust"
-keywords = ["goita", "game", "board game"]
+keywords = ["goita", "game", "board_game"]
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
