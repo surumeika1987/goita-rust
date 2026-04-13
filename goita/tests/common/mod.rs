@@ -20,7 +20,7 @@ macro_rules! hand {
 pub fn pass_until_last_placed_player(game: &mut GoitaGame) {
     for _ in 0..3 {
         // Normal pass
-        let player = game.current_turn_plyer().unwrap();
+        let player = game.current_turn_player().unwrap();
         let action_result = game.play_turn(player, PlayerAction::Pass);
         if let Err(Error::InvalidPass) = action_result {
             // If the pass is invalid, it means the last placed player is the same as the current player,

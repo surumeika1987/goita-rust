@@ -499,9 +499,9 @@ fn test_normal_game_flow() {
     game.start_new_round().unwrap();
     println!(
         "New round started. Starting player should be West based on previous round result. Current turn player: {:?}",
-        game.current_turn_plyer()
+        game.current_turn_player()
     );
-    assert_eq!(game.current_turn_plyer(), Some(BoardDirection::West));
+    assert_eq!(game.current_turn_player(), Some(BoardDirection::West));
 
     println!(
         "Hands(North): {:?}",

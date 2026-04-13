@@ -147,7 +147,7 @@ impl GoitaGame {
         }
     }
 
-    pub fn current_turn_plyer(&self) -> Option<BoardDirection> {
+    pub fn current_turn_player(&self) -> Option<BoardDirection> {
         if self.check_game_over().is_some() {
             return None;
         }
