@@ -309,15 +309,15 @@ impl GoitaRound {
 
         let top_piece_with_face = if let Some(last_place_player) = self.last_place_player {
             if player == last_place_player {
-                PieceWithFacing::Down(top_piece)
+                PieceWithFacing::FaceDowmn(top_piece)
             } else {
-                PieceWithFacing::Up(top_piece)
+                PieceWithFacing::FaceUp(top_piece)
             }
         } else {
-            PieceWithFacing::Down(top_piece)
+            PieceWithFacing::FaceDowmn(top_piece)
         };
 
-        if let PieceWithFacing::Up(piece) = top_piece_with_face {
+        if let PieceWithFacing::FaceUp(piece) = top_piece_with_face {
             let Some(last_placed_piece) = self.get_last_placed_piece() else {
                 return Err(Error::InvalidPlace);
             };
@@ -364,7 +364,7 @@ impl GoitaRound {
                 let bottom_piece = Piece::from(pieces[7]);
 
                 let double_up =
-                    matches!(top_piece, PieceWithFacing::Down(piece) if piece == bottom_piece);
+                    matches!(top_piece, PieceWithFacing::FaceDowmn(piece) if piece == bottom_piece);
 
                 let score = if double_up {
                     bottom_piece.point_value() * 2
@@ -400,7 +400,7 @@ impl GoitaRound {
             .board
             .get_all_pieces()
             .iter()
-            .filter(|p| **p == PieceWithFacing::Up(Piece::King))
+            .filter(|p| **p == PieceWithFacing::FaceUp(Piece::King))
             .count()
             == 1
         {

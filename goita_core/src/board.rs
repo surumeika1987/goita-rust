@@ -99,13 +99,12 @@ impl From<BoardDirection> for Team {
 /// Represents a piece on the board along with its facing (up or down). In Goita, pieces can be
 /// placed face-up (visible to all players) or face-down (hidden from all players). This struct
 /// encapsulates both the piece type and its orientation on the board.
-// TODO: Change Up to FaceUp and Down to FaceDown for better clarity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PieceWithFacing {
     /// The piece is face-up and it content is visible to all players.
-    Up(Piece),
+    FaceUp(Piece),
     /// The piece is face-down and its content is hidden from all players.
-    Down(Piece),
+    FaceDowmn(Piece),
 }
 
 impl From<PieceWithFacing> for Piece {
@@ -113,7 +112,7 @@ impl From<PieceWithFacing> for Piece {
     /// ignoring whether it is facing up or down.
     fn from(pwf: PieceWithFacing) -> Self {
         match pwf {
-            PieceWithFacing::Up(p) | PieceWithFacing::Down(p) => p,
+            PieceWithFacing::FaceUp(p) | PieceWithFacing::FaceDowmn(p) => p,
         }
     }
 }
@@ -174,7 +173,7 @@ impl Board {
     ///
     /// - `direction`: The board direction where the pieces are placed.
     /// - `top_piece`: The piece to place on top.
-    /// - `bottom_piece`: The piece to place on the bottom (stored as `Up` facing).
+    /// - `bottom_piece`: The piece to place on the bottom (stored as `FaceUp` facing).
     pub fn place_pieces(
         &mut self,
         direction: BoardDirection,
@@ -189,7 +188,7 @@ impl Board {
             );
         }
         list.push(top_piece);
-        list.push(PieceWithFacing::Up(bottom_piece));
+        list.push(PieceWithFacing::FaceUp(bottom_piece));
     }
 }
 

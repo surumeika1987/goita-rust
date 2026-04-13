@@ -144,8 +144,8 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::North).unwrap(),
         vec![
-            PieceWithFacing::Down(Piece::Pawn),
-            PieceWithFacing::Up(Piece::Lance),
+            PieceWithFacing::FaceDowmn(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Lance),
         ]
     );
 
@@ -181,8 +181,8 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::East).unwrap(),
         vec![
-            PieceWithFacing::Up(Piece::Lance),
-            PieceWithFacing::Up(Piece::Knight),
+            PieceWithFacing::FaceUp(Piece::Lance),
+            PieceWithFacing::FaceUp(Piece::Knight),
         ]
     );
 
@@ -218,8 +218,8 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::South).unwrap(),
         vec![
-            PieceWithFacing::Up(Piece::King),
-            PieceWithFacing::Up(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::King),
+            PieceWithFacing::FaceUp(Piece::Pawn),
         ]
     );
 
@@ -260,10 +260,10 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::North).unwrap(),
         vec![
-            PieceWithFacing::Down(Piece::Pawn),
-            PieceWithFacing::Up(Piece::Lance),
-            PieceWithFacing::Up(Piece::Pawn),
-            PieceWithFacing::Up(Piece::Lance),
+            PieceWithFacing::FaceDowmn(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Lance),
+            PieceWithFacing::FaceUp(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Lance),
         ]
     );
 
@@ -322,12 +322,12 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::North).unwrap(),
         vec![
-            PieceWithFacing::Down(Piece::Pawn),
-            PieceWithFacing::Up(Piece::Lance),
-            PieceWithFacing::Up(Piece::Pawn),
-            PieceWithFacing::Up(Piece::Lance),
-            PieceWithFacing::Down(Piece::Silver),
-            PieceWithFacing::Up(Piece::Gold),
+            PieceWithFacing::FaceDowmn(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Lance),
+            PieceWithFacing::FaceUp(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Lance),
+            PieceWithFacing::FaceDowmn(Piece::Silver),
+            PieceWithFacing::FaceUp(Piece::Gold),
         ]
     );
 
@@ -358,8 +358,8 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::West).unwrap(),
         vec![
-            PieceWithFacing::Up(Piece::Gold),
-            PieceWithFacing::Up(Piece::King),
+            PieceWithFacing::FaceUp(Piece::Gold),
+            PieceWithFacing::FaceUp(Piece::King),
         ]
     );
 
@@ -391,10 +391,10 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::West).unwrap(),
         vec![
-            PieceWithFacing::Up(Piece::Gold),
-            PieceWithFacing::Up(Piece::King),
-            PieceWithFacing::Down(Piece::Bishop),
-            PieceWithFacing::Up(Piece::Silver),
+            PieceWithFacing::FaceUp(Piece::Gold),
+            PieceWithFacing::FaceUp(Piece::King),
+            PieceWithFacing::FaceDowmn(Piece::Bishop),
+            PieceWithFacing::FaceUp(Piece::Silver),
         ]
     );
 
@@ -430,12 +430,12 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::West).unwrap(),
         vec![
-            PieceWithFacing::Up(Piece::Gold),
-            PieceWithFacing::Up(Piece::King),
-            PieceWithFacing::Down(Piece::Bishop),
-            PieceWithFacing::Up(Piece::Silver),
-            PieceWithFacing::Down(Piece::Pawn),
-            PieceWithFacing::Up(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Gold),
+            PieceWithFacing::FaceUp(Piece::King),
+            PieceWithFacing::FaceDowmn(Piece::Bishop),
+            PieceWithFacing::FaceUp(Piece::Silver),
+            PieceWithFacing::FaceDowmn(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Pawn),
         ]
     );
 
@@ -570,8 +570,8 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::West).unwrap(),
         vec![
-            PieceWithFacing::Down(Piece::Knight),
-            PieceWithFacing::Up(Piece::Pawn),
+            PieceWithFacing::FaceDowmn(Piece::Knight),
+            PieceWithFacing::FaceUp(Piece::Pawn),
         ]
     );
 
@@ -592,8 +592,8 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::North).unwrap(),
         vec![
-            PieceWithFacing::Up(Piece::Pawn),
-            PieceWithFacing::Up(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Pawn),
         ]
     );
 
@@ -616,10 +616,10 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::North).unwrap(),
         vec![
-            PieceWithFacing::Up(Piece::Pawn),
-            PieceWithFacing::Up(Piece::Pawn),
-            PieceWithFacing::Down(Piece::Knight),
-            PieceWithFacing::Up(Piece::Silver),
+            PieceWithFacing::FaceUp(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Pawn),
+            PieceWithFacing::FaceDowmn(Piece::Knight),
+            PieceWithFacing::FaceUp(Piece::Silver),
         ]
     );
 
@@ -642,12 +642,12 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::North).unwrap(),
         vec![
-            PieceWithFacing::Up(Piece::Pawn),
-            PieceWithFacing::Up(Piece::Pawn),
-            PieceWithFacing::Down(Piece::Knight),
-            PieceWithFacing::Up(Piece::Silver),
-            PieceWithFacing::Down(Piece::Lance),
-            PieceWithFacing::Up(Piece::Lance),
+            PieceWithFacing::FaceUp(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Pawn),
+            PieceWithFacing::FaceDowmn(Piece::Knight),
+            PieceWithFacing::FaceUp(Piece::Silver),
+            PieceWithFacing::FaceDowmn(Piece::Lance),
+            PieceWithFacing::FaceUp(Piece::Lance),
         ]
     );
 
@@ -676,14 +676,14 @@ fn test_normal_game_flow() {
     assert_eq!(
         game.player_board(BoardDirection::North).unwrap(),
         vec![
-            PieceWithFacing::Up(Piece::Pawn),
-            PieceWithFacing::Up(Piece::Pawn),
-            PieceWithFacing::Down(Piece::Knight),
-            PieceWithFacing::Up(Piece::Silver),
-            PieceWithFacing::Down(Piece::Lance),
-            PieceWithFacing::Up(Piece::Lance),
-            PieceWithFacing::Down(Piece::Gold),
-            PieceWithFacing::Up(Piece::King),
+            PieceWithFacing::FaceUp(Piece::Pawn),
+            PieceWithFacing::FaceUp(Piece::Pawn),
+            PieceWithFacing::FaceDowmn(Piece::Knight),
+            PieceWithFacing::FaceUp(Piece::Silver),
+            PieceWithFacing::FaceDowmn(Piece::Lance),
+            PieceWithFacing::FaceUp(Piece::Lance),
+            PieceWithFacing::FaceDowmn(Piece::Gold),
+            PieceWithFacing::FaceUp(Piece::King),
         ]
     );
 

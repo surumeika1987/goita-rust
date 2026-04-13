@@ -60,14 +60,14 @@
 //! let mut board = Board::new();
 //! board.place_pieces(
 //!     BoardDirection::North,
-//!     PieceWithFacing::Down(Piece::Pawn),
+//!     PieceWithFacing::FaceDowmn(Piece::Pawn),
 //!     Piece::Gold,
 //! );
 //!
 //! let north = board.get_pieces(BoardDirection::North);
 //! assert_eq!(north.len(), 2);
-//! assert_eq!(north[0], PieceWithFacing::Down(Piece::Pawn));
-//! assert_eq!(north[1], PieceWithFacing::Up(Piece::Gold));
+//! assert_eq!(north[0], PieceWithFacing::FaceDowmn(Piece::Pawn));
+//! assert_eq!(north[1], PieceWithFacing::FaceUp(Piece::Gold));
 //! ```
 //!
 //! Work with direction and team mapping:
