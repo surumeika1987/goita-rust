@@ -198,6 +198,47 @@ impl GoitaGame {
         }
     }
 
+    /// Validates whether a player can place the specified pieces in the current game state.
+    ///
+    /// This method checks:
+    /// - the game has started,
+    /// - the game is not already over,
+    /// - the current round is not over,
+    /// - and the move itself is valid according to round rules.
+    ///
+    /// # Parameters
+    /// - `player`: The direction/player attempting to place pieces.
+    /// - `top_piece`: The top piece with facing information.
+    /// - `bottom_piece`: The bottom piece to place.
+    ///
+    /// # Returns
+    /// - `Ok(())` if the placement is valid.
+    /// - `Err(Error::GameIsOver)` if the game has already ended.
+    /// - `Err(Error::RoundIsOver)` if the current round has ended.
+    /// - `Err(Error::InvalidPlace(_))` if the move violates placement rules.
+    /// - `Err(Error::GameNotStarted)` if no round is currently active.
+    pub fn check_place_piece(
+        &self,
+        player: BoardDirection,
+        top_piece: PieceWithFacing,
+        bottom_piece: Piece,
+    ) -> Result<(), Error> {
+        if let Some(_) = self.check_game_over() {
+            return Err(Error::GameIsOver);
+        }
+        if let Some(round) = &self.current_round {
+            if round.round_is_over() {
+                return Err(Error::RoundIsOver);
+            }
+            match round.check_place_pieces(player, top_piece, bottom_piece) {
+                Ok(_) => Ok(()),
+                Err(e) => Err(Error::InvalidPlace(e)),
+            }
+        } else {
+            return Err(Error::GameNotStarted);
+        }
+    }
+
     /// Returns the hand of the specified player in the current round.
     ///
     /// If no round is currently active, this returns `None`.
