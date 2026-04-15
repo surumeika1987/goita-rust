@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-goita_core = { "path" = "../goita_core" }
+goita.workspace = true
