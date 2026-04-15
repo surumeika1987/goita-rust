@@ -1,6 +1,6 @@
 [package]
 name = "goita"
-version = "0.2.0"
+version = "0.2.1"
 description = "Core game engine for Goita, including round/game state management, turn validation, scoring rules, ans special hand event handling."
 readme = "./README.md"
 
