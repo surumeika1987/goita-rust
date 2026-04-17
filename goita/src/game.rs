@@ -101,6 +101,8 @@ impl GoitaGame {
                     Team::NorthSouth => self.ns_score += score,
                     Team::EastWest => self.ew_score += score,
                 }
+
+                self.round_start_player = player;
             }
             _ => {}
         }
