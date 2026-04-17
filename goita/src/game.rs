@@ -268,4 +268,12 @@ impl GoitaGame {
             .as_ref()
             .and_then(|round| round.last_placed_piece())
     }
+    /// Returns the direction of the player who most recently placed a card in the current round.
+    ///
+    /// Returns `None` if there is no active round or if no player has placed a card yet.
+    pub fn last_placed_player(&self) -> Option<BoardDirection> {
+        self.current_round
+            .as_ref()
+            .and_then(|round| round.last_placed_player())
+    }
 }
