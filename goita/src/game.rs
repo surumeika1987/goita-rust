@@ -150,6 +150,11 @@ impl GoitaGame {
         }
     }
 
+    /// Returns the player whose turn it is in the current game state.
+    ///
+    /// If the game is already over, this returns `None` because no further turn exists.
+    /// Otherwise, it returns the current turn player from the active round.
+    /// If no round is active, it also returns `None`.
     pub fn current_turn_player(&self) -> Option<BoardDirection> {
         if self.check_game_over().is_some() {
             return None;
@@ -158,6 +163,14 @@ impl GoitaGame {
         self.current_round
             .as_ref()
             .and_then(|round| round.current_turn_player())
+    }
+
+    /// Returns the score required to win the game based on the current game rule.
+    ///
+    /// # Returns
+    /// The winning score threshold as a `u32`.
+    pub fn winning_score(&self) -> u32 {
+        self.game_rule.winning_score()
     }
 
     /// Returns the current score for the North-South team.
